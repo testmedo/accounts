@@ -1,0 +1,14 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>التعديل والحذف</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=4"></head><body>
+<main><div id="msg" class="hide"></div><input id="q" placeholder="ابحث باسم المورد أو كود الفاتورة" oninput="draw()" style="margin-bottom:12px"><div id="l"></div></main>
+<script src="js/app.js?v=4"></script><script>
+guard(['admin']);let I=[];
+async function load(){I=await api('invoices?select=*,suppliers(name),contracts(title),payments(id,amount,status,created_at)&order=created_at.desc&limit=300');draw()}
+function draw(){const q=$('#q').value.trim().toLowerCase();$('#l').innerHTML=I.filter(i=>!q||(i.suppliers.name+(i.code||'')).toLowerCase().includes(q)).map(i=>`<details class="card"><summary><b>${i.suppliers.name}</b> <small>${i.contracts.title} • ${i.code||''} • ${money(i.amount)}</small></summary>
+<small>${i.description||''}</small><div style="display:flex;gap:8px;margin:8px 0"><button class="b s" onclick="ed('${i.id}')">تعديل الفاتورة</button><button class="b s r" onclick="del('invoices','${i.id}')">حذف الفاتورة</button></div>
+${(i.payments||[]).map(p=>`<div class="row"><div>${money(p.amount)}<small>${p.status} • ${fdate(p.created_at)}</small></div><div style="display:flex;gap:6px"><button class="b s" onclick="edp('${p.id}',${p.amount})">تعديل</button><button class="b s r" onclick="del('payments','${p.id}')">حذف</button></div></div>`).join('')}</details>`).join('')}
+async function ed(id){const i=I.find(x=>x.id==id),a=prompt('المبلغ',i.amount);if(a===null)return;const d=prompt('البيان',i.description||'');const c=prompt('كود الفاتورة',i.code||'');await api('invoices?id=eq.'+id,'PATCH',{amount:+a,description:d,code:c});msg('تم التعديل');load()}
+async function edp(id,v){const a=prompt('المبلغ',v);if(a===null)return;await api('payments?id=eq.'+id,'PATCH',{amount:+a});msg('تم التعديل');load()}
+async function del(t,id){if(!confirm('تأكيد الحذف النهائي؟'))return;await api(t+'?id=eq.'+id,'DELETE');msg('تم الحذف');load()}
+load();
+</script></body></html>

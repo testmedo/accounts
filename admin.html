@@ -1,0 +1,23 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الإدارة</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=4">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
+<main><div id="msg" class="hide"></div>
+<div class="card"><h2>رفع المعاملات السابقة (Excel)</h2><small>الأعمدة: كود المورد | الاسم | الهاتف | المجال | العقد | كود الفاتورة | النوع (pay/income) | المبلغ | المدفوع | البيان | التاريخ</small>
+<button class="b g" style="margin-bottom:8px" onclick="tpl()">تحميل النموذج</button><input id="f" type="file" accept=".xlsx,.xls"><button class="b" onclick="imp()">رفع واستيراد</button></div>
+</main>
+<script src="js/app.js?v=4"></script><script>
+const U=guard(['admin']);
+const HD=['كود المورد','الاسم','الهاتف','المجال','العقد','كود الفاتورة','النوع','المبلغ','المدفوع','البيان','التاريخ'];
+function tpl(){const w=XLSX.utils.book_new();XLSX.utils.book_append_sheet(w,XLSX.utils.aoa_to_sheet([HD]),'data');XLSX.writeFile(w,'نموذج_الاستيراد.xlsx')}
+async function imp(){try{const f=$('#f').files[0];if(!f)return msg('اختر ملفًا',1);
+const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});const rows=XLSX.utils.sheet_to_json(wb.Sheets.data||wb.Sheets[wb.SheetNames[0]]);
+const sup={},con={};let n=0;
+for(const r of rows){const code=String(r[HD[0]]||'').trim();if(!code)continue;
+ if(!sup[code])sup[code]=(await api('suppliers?on_conflict=code','POST',{code,name:r[HD[1]],phone:String(r[HD[2]]||''),field:r[HD[3]]},'resolution=merge-duplicates,return=representation'))[0].id;
+ const ck=code+'|'+r[HD[4]];
+ if(!con[ck])con[ck]=(await api('contracts','POST',{supplier_id:sup[code],title:r[HD[4]]||'عقد سابق',created_by:U.id}))[0].id;
+ const at=r[HD[10]]?new Date(r[HD[10]]).toISOString():new Date().toISOString();
+ const i=(await api('invoices','POST',{contract_id:con[ck],supplier_id:sup[code],type:r[HD[6]]=='income'?'income':'pay',code:String(r[HD[5]]||''),amount:+r[HD[7]]||0,description:r[HD[9]],created_by:U.id,created_at:at}))[0];
+ if(+r[HD[8]]>0)await api('payments','POST',{invoice_id:i.id,amount:+r[HD[8]],status:'approved',created_by:U.id,approved_by:U.id,created_at:at,decided_at:at});n++}
+msg(`تم استيراد ${n} سطر`)}catch(e){msg('خطأ: '+e.message,1)}}
+</script></body></html>
