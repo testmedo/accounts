@@ -1,14 +1,29 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>التعديل والحذف</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=4"></head><body>
-<main><div id="msg" class="hide"></div><input id="q" placeholder="ابحث باسم المورد أو كود الفاتورة" oninput="draw()" style="margin-bottom:12px"><div id="l"></div></main>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=4">
+<style>.ov{position:fixed;inset:0;background:#0009;display:flex;align-items:flex-end;justify-content:center;z-index:20}.ov.hide{display:none}
+.md{background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px;max-height:92vh;overflow:auto}@media(min-width:700px){.ov{align-items:center}.md{border-radius:20px}}
+.md h2{display:flex;justify-content:space-between}.md h2 button{border:0;background:none;font-size:1.6rem;cursor:pointer;color:#4a5f66}
+.ck{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.9rem}.ck input{width:auto}</style></head><body>
+<main><div id="msg" class="hide"></div>
+<div class="card"><label>المورد / المقاول</label><select id="s" onchange="load()"><option value="">كل الموردين (آخر 300 فاتورة)</option></select>
+<label>بحث بكود الفاتورة أو التعاقد</label><input id="q" oninput="draw()"></div><div id="l"></div></main>
+
+<div id="ov" class="ov hide"><div class="md"><h2><span id="mt"></span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div>
+<div class="grid"><button class="b" id="ms">حفظ التعديلات</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
 <script src="js/app.js?v=4"></script><script>
-guard(['admin']);let I=[];
-async function load(){I=await api('invoices?select=*,suppliers(name),contracts(title),payments(id,amount,status,created_at)&order=created_at.desc&limit=300');draw()}
-function draw(){const q=$('#q').value.trim().toLowerCase();$('#l').innerHTML=I.filter(i=>!q||(i.suppliers.name+(i.code||'')).toLowerCase().includes(q)).map(i=>`<details class="card"><summary><b>${i.suppliers.name}</b> <small>${i.contracts.title} • ${i.code||''} • ${money(i.amount)}</small></summary>
-<small>${i.description||''}</small><div style="display:flex;gap:8px;margin:8px 0"><button class="b s" onclick="ed('${i.id}')">تعديل الفاتورة</button><button class="b s r" onclick="del('invoices','${i.id}')">حذف الفاتورة</button></div>
-${(i.payments||[]).map(p=>`<div class="row"><div>${money(p.amount)}<small>${p.status} • ${fdate(p.created_at)}</small></div><div style="display:flex;gap:6px"><button class="b s" onclick="edp('${p.id}',${p.amount})">تعديل</button><button class="b s r" onclick="del('payments','${p.id}')">حذف</button></div></div>`).join('')}</details>`).join('')}
-async function ed(id){const i=I.find(x=>x.id==id),a=prompt('المبلغ',i.amount);if(a===null)return;const d=prompt('البيان',i.description||'');const c=prompt('كود الفاتورة',i.code||'');await api('invoices?id=eq.'+id,'PATCH',{amount:+a,description:d,code:c});msg('تم التعديل');load()}
-async function edp(id,v){const a=prompt('المبلغ',v);if(a===null)return;await api('payments?id=eq.'+id,'PATCH',{amount:+a});msg('تم التعديل');load()}
-async function del(t,id){if(!confirm('تأكيد الحذف النهائي؟'))return;await api(t+'?id=eq.'+id,'DELETE');msg('تم الحذف');load()}
+guard(['admin']);let I=[];const ST={pending:'معلق',approved:'معتمد',rejected:'مرفوض'},iso=d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')},tz=v=>new Date(v+'T12:00:00').toISOString();
+api('suppliers?order=name').then(s=>$('#s').innerHTML+=s.map(x=>`<option value="${x.id}">${x.name} (${x.code})</option>`).join(''));
+async function load(){const sid=$('#s').value;I=await api('invoices?select=*,suppliers(name),contracts(title),payments(id,amount,status,created_at)&order=created_at.desc'+(sid?'&supplier_id=eq.'+sid:'&limit=300'));draw()}
+function draw(){const q=$('#q').value.trim().toLowerCase();$('#l').innerHTML=I.filter(i=>!q||((i.code||'')+i.contracts.title).toLowerCase().includes(q)).map(i=>`<details class="card"><summary><b>${i.suppliers.name}</b> <small>${i.contracts.title} • ${i.code||''} • ${money(i.amount)} • ${fdate(i.created_at)}</small></summary>
+<small>${i.description||''}</small><div style="display:flex;gap:8px;margin:8px 0"><button class="b s" onclick="oi('${i.id}')">تعديل الفاتورة</button><button class="b s r" onclick="del('invoices','${i.id}')">حذف الفاتورة</button></div>
+${(i.payments||[]).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(p=>`<div class="row"><div>${money(p.amount)}<small>${ST[p.status]} • ${fdate(p.created_at)}</small></div><div style="display:flex;gap:6px"><button class="b s" onclick="op('${i.id}','${p.id}')">تعديل</button><button class="b s r" onclick="del('payments','${p.id}')">حذف</button></div></div>`).join('')}</details>`).join('')||'<div class="msg">لا توجد فواتير</div>'}
+const cl=()=>$('#ov').className='ov hide';
+function show(t,html,fn){$('#mt').textContent=t;$('#mb').innerHTML=html;$('#me').className='msg e hide';$('#ms').onclick=async()=>{try{await fn();cl();msg('تم الحفظ بنجاح');load()}catch(e){$('#me').textContent=e.message;$('#me').className='msg e'}};$('#ov').className='ov'}
+function oi(id){const i=I.find(x=>x.id==id);show('تعديل الفاتورة',`<label>كود الفاتورة</label><input id="m1" value="${i.code||''}"><label>المبلغ</label><input id="m2" type="number" inputmode="decimal" value="${i.amount}"><label>البيان</label><textarea id="m3" rows="2">${i.description||''}</textarea><label>تاريخ الفاتورة</label><input id="m4" type="date" value="${iso(i.created_at)}"><label class="ck"><input id="m5" type="checkbox" checked>تطبيق نفس التاريخ على كل دفعات هذه الفاتورة (تعتمد عليه التقارير)</label>`,async()=>{
+ if(!$('#m4').value)throw Error('اختر التاريخ');const d=tz($('#m4').value);const r=await api('invoices?id=eq.'+id,'PATCH',{code:$('#m1').value,amount:+$('#m2').value,description:$('#m3').value,created_at:d});if(!r.length)throw Error('لم يتم التعديل — تحقق من الصلاحيات في Supabase');
+ if($('#m5').checked)await api('payments?invoice_id=eq.'+id,'PATCH',{created_at:d})})}
+function op(iid,pid){const p=I.find(x=>x.id==iid).payments.find(x=>x.id==pid);show('تعديل الدفعة',`<label>المبلغ</label><input id="m1" type="number" inputmode="decimal" value="${p.amount}"><label>تاريخ الدفعة</label><input id="m2" type="date" value="${iso(p.created_at)}"><label>الحالة</label><select id="m3">${Object.entries(ST).map(([k,v])=>`<option value="${k}" ${k==p.status?'selected':''}>${v}</option>`).join('')}</select>`,async()=>{
+ if(!$('#m2').value)throw Error('اختر التاريخ');const r=await api('payments?id=eq.'+pid,'PATCH',{amount:+$('#m1').value,created_at:tz($('#m2').value),status:$('#m3').value});if(!r.length)throw Error('لم يتم التعديل — تحقق من الصلاحيات في Supabase')})}
+async function del(t,id){if(!confirm('تأكيد الحذف النهائي؟'))return;try{await api(t+'?id=eq.'+id,'DELETE');msg('تم الحذف');load()}catch(e){msg(e.message,1)}}
 load();
 </script></body></html>
