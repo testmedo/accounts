@@ -1,10 +1,10 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تسجيل الدخول</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=4"></head><body>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=5"></head><body>
 <header><img src="assets/logo.png" alt="شعار الجامعة"><h1>نظام مدفوعات الموردين</h1></header>
 <main><div class="card" style="max-width:420px;margin:30px auto"><h2>تسجيل الدخول</h2><div id="msg" class="hide"></div>
 <label>اسم المستخدم</label><input id="u" autocomplete="username"><label>كلمة المرور</label><input id="p" type="password" autocomplete="current-password">
 <button class="b" onclick="login()">دخول</button></div></main>
-<script src="js/app.js?v=4"></script><script>
+<script src="js/app.js?v=5"></script><script>
 async function login(){try{const r=await api(`users?username=eq.${encodeURIComponent($('#u').value.trim())}&password=eq.${encodeURIComponent($('#p').value)}&active=eq.true&select=id,full_name,role`);
 if(!r.length){$('#msg').className='msg e';return $('#msg').textContent='بيانات الدخول غير صحيحة'}
 sessionStorage.setItem('u',JSON.stringify(r[0]));location.href=home[r[0].role]}catch(e){$('#msg').className='msg e';$('#msg').textContent='تعذر الاتصال: '+e.message}}

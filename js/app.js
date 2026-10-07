@@ -1,7 +1,7 @@
 const SB='https://jupcllnvlaxsvfyoyisb.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1cGNsbG52bGF4c3ZmeW95aXNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNzUxOTcsImV4cCI6MjEwNjc1MTE5N30.wfjngx7XEfXz432ZpRNFiSMvcxNRdhotuvelmltEcLI';
 async function api(path,method='GET',body,prefer='return=representation'){
  const r=await fetch(SB+'/rest/v1/'+path,{method,headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json',Prefer:prefer},body:body?JSON.stringify(body):undefined});
- const t=await r.text();if(!r.ok)throw new Error(t);return t?JSON.parse(t):[]}
+ const t=await r.text();if(!r.ok){const e=new Error(t);e.dup=/23505/.test(t);throw e}return t?JSON.parse(t):[]}
 async function upload(file){
  const n=Date.now()+'_'+file.name.replace(/[^\w.]/g,'');
  const r=await fetch(`${SB}/storage/v1/object/photo/${n}`,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':file.type},body:file});
@@ -21,3 +21,6 @@ function guard(roles){const u=me();if(!u||!roles.includes(u.role)){location.href
  document.body.insertAdjacentHTML('beforeend','<footer><img src="assets/logo.png" alt=""><span>نظام متابعة مدفوعات الموردين والمقاولين</span></footer>');return u}
 const paidOf=i=>(i.payments||[]).filter(p=>p.status=='approved').reduce((s,p)=>s+Number(p.amount),0);
 const msg=(t,e)=>{const m=$('#msg');m.className='msg'+(e?' e':'');m.textContent=t;m.scrollIntoView({block:'center'})};
+
+const nz=s=>String(s==null?'':s).trim().replace(/\s+/g,' ').toLowerCase();
+const errT=e=>e.dup?'هذا السجل مكرر ولا يمكن إضافته أو حفظه':'خطأ: '+e.message;

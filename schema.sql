@@ -15,3 +15,7 @@ insert into users(username,password,full_name,role) values
 -- صور الفواتير: اجعل الـ bucket باسم photo عامًا (Public) ثم:
 create policy photo_ins on storage.objects for insert to anon with check(bucket_id='photo');
 create policy photo_sel on storage.objects for select to anon using(bucket_id='photo');
+
+-- منع التكرار على مستوى قاعدة البيانات
+create unique index if not exists inv_code_u on invoices(lower(trim(code))) where code is not null and trim(code)<>'';
+create unique index if not exists con_u on contracts(supplier_id,lower(trim(title)));

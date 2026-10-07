@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>المحاسبة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=4"></head><body>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=5"></head><body>
 <main><div id="msg" class="hide"></div>
 <div id="home" class="cards"></div>
 
@@ -22,7 +22,7 @@
 
 <section id="list" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><input id="lq" placeholder="ابحث باسم المورد أو كوده" oninput="draw()"></div><div id="llist"></div></section>
 </main>
-<script src="js/app.js?v=4"></script><script>
+<script src="js/app.js?v=5"></script><script>
 const U=guard(['accountant','manager','admin']);let S=[],C=[],I=[];
 function go(id){['home','sup','con','inv','open','list'].forEach(x=>$('#'+x).classList.toggle('hide',x!=(id||'home')));$('#msg').className='hide';scrollTo(0,0)}
 async function load(){[S,C,I]=await Promise.all([api('suppliers?order=name'),api('contracts?select=*&order=created_at.desc'),api('invoices?select=*,suppliers(name),contracts(title),payments(amount,status)&order=created_at.desc')]);
@@ -34,12 +34,12 @@ function draw(){const q=$('#lq').value.trim().toLowerCase();
  $('#llist').innerHTML=S.filter(s=>!q||(s.name+s.code).toLowerCase().includes(q)).map(s=>{const cs=C.filter(c=>c.supplier_id==s.id);
  return `<details class="card"><summary><b>${s.name}</b> <small>${s.code} • ${s.field||''}</small></summary><small>${s.phone||''}</small>${cs.map(c=>{const iv=I.filter(i=>i.contract_id==c.id);return `<div class="row"><div><span class="t">${c.title}</span><small>${iv.length} فاتورة • مدفوع ${money(iv.reduce((a,i)=>a+paidOf(i),0))}</small></div><div class="amt">${c.agreed_amount?money(c.agreed_amount):''}</div></div>`}).join('')||'<small>لا توجد سجلات</small>'}</details>`}).join('')}
 function fill(){const s=S.find(x=>x.id==$('#cs').value),i=$('#info');if(!s)return i.className='hide';i.className='msg';i.textContent=`${s.name} | ${s.code} | ${s.phone||''} | ${s.field||''}`}
-async function addSup(){try{await api('suppliers','POST',{name:$('#sn').value,phone:$('#sp').value,code:$('#sc').value,field:$('#sf').value});await load();go();msg('تم حفظ المورد')}catch(e){msg('خطأ: '+e.message,1)}}
-async function addCon(){try{await api('contracts','POST',{supplier_id:$('#cs').value,title:$('#ct').value,agreed_amount:$('#ca').value||null,created_by:U.id});await load();go();msg('تم إنشاء السجل التعاقدي')}catch(e){msg('خطأ: '+e.message,1)}}
-async function addInv(){try{const c=C.find(x=>x.id==$('#ic').value);let url=null;if($('#iimg').files[0])url=await upload($('#iimg').files[0]);
+async function addSup(){try{const nm=nz($('#sn').value),cd=nz($('#sc').value);if(!nm||!cd)return msg('الاسم وكود الموظف مطلوبان',1);if(S.some(s=>nz(s.code)==cd))return msg('كود الموظف مسجل لمورد آخر',1);if(S.some(s=>nz(s.name)==nm))return msg('هذا المورد مسجل من قبل بنفس الاسم',1);await api('suppliers','POST',{name:$('#sn').value,phone:$('#sp').value,code:$('#sc').value,field:$('#sf').value});await load();go();msg('تم حفظ المورد')}catch(e){msg(errT(e),1)}}
+async function addCon(){try{if(!$('#cs').value||!nz($('#ct').value))return msg('اختر المورد واكتب اسم المعاملة',1);if(C.some(c=>c.supplier_id==$('#cs').value&&nz(c.title)==nz($('#ct').value)))return msg('هذا التعاقد مسجل لهذا المورد من قبل',1);await api('contracts','POST',{supplier_id:$('#cs').value,title:$('#ct').value,agreed_amount:$('#ca').value||null,created_by:U.id});await load();go();msg('تم إنشاء السجل التعاقدي')}catch(e){msg(errT(e),1)}}
+async function addInv(){try{const ic=nz($('#icode').value);if(!ic)return msg('أدخل كود الفاتورة',1);if(I.some(i=>nz(i.code)==ic))return msg('كود الفاتورة مسجل من قبل ولا يمكن تكراره',1);const c=C.find(x=>x.id==$('#ic').value);let url=null;if($('#iimg').files[0])url=await upload($('#iimg').files[0]);
  const amt=+$('#iam').value,pay=+$('#ipay').value;if(pay>amt)return msg('المبلغ المدفوع أكبر من الفاتورة',1);
  const i=(await api('invoices','POST',{contract_id:c.id,supplier_id:c.supplier_id,type:$('#it').value,code:$('#icode').value,amount:amt,description:$('#ides').value,image_url:url,created_by:U.id}))[0];
- if(pay>0)await api('payments','POST',{invoice_id:i.id,amount:pay,created_by:U.id});await load();go();msg('تم الحفظ — بانتظار اعتماد مدير الحسابات')}catch(e){msg('خطأ: '+e.message,1)}}
+ if(pay>0)await api('payments','POST',{invoice_id:i.id,amount:pay,created_by:U.id});await load();go();msg('تم الحفظ — بانتظار اعتماد مدير الحسابات')}catch(e){msg(errT(e),1)}}
 async function payMore(id,rest){const v=+prompt('المبلغ المراد دفعه (المتبقي '+rest+')');if(!v||v>rest)return;await api('payments','POST',{invoice_id:id,amount:v,created_by:U.id});await load();msg('أُرسل للاعتماد')}
 $('#home').innerHTML=card('user','مورد جديد','إضافة مورد أو مقاول',"go('sup')")+card('folder','سجل تعاقدي جديد','عقد أو مشروع لمورد',"go('con')")+card('receipt','فاتورة فرعية','دفع إلى / إيراد من',"go('inv')")+card('wallet','دفع المتبقي','فواتير دُفع جزء منها',"go('open')")+card('list','الموردون والسجلات','بحث واستعراض',"go('list')")+card('chart','كشف الحساب','عرض وتحميل PDF أو Excel',"location.href='report.html'");
 load();
