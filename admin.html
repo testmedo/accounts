@@ -1,29 +1,11 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الإدارة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=5">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=6">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div class="card"><h2>رفع المعاملات السابقة (Excel)</h2><small>الأعمدة: كود المورد | الاسم | الهاتف | المجال | العقد | كود الفاتورة | النوع (pay/income) | المبلغ | المدفوع | البيان | التاريخ</small>
 <button class="b g" style="margin-bottom:8px" onclick="tpl()">تحميل النموذج</button><input id="f" type="file" accept=".xlsx,.xls"><button class="b" onclick="imp()">رفع واستيراد</button></div>
 <div id="res"></div></main>
-<script src="js/app.js?v=5"></script><script>
+<script src="js/app.js?v=6"></script><script src="js/importer.js?v=6"></script><script>
 const U=guard(['admin']);
-const HD=['كود المورد','الاسم','الهاتف','المجال','العقد','كود الفاتورة','النوع','المبلغ','المدفوع','البيان','التاريخ'];
-function tpl(){const w=XLSX.utils.book_new();XLSX.utils.book_append_sheet(w,XLSX.utils.aoa_to_sheet([HD]),'data');XLSX.writeFile(w,'نموذج_الاستيراد.xlsx')}
-async function imp(){try{const f=$('#f').files[0];if(!f)return msg('اختر ملفًا',1);
-const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true}),rows=XLSX.utils.sheet_to_json(wb.Sheets.data||wb.Sheets[wb.SheetNames[0]]);msg('جارٍ الاستيراد...');
-const [S,C,I]=await Promise.all([api('suppliers?select=id,code,name'),api('contracts?select=id,supplier_id,title'),api('invoices?select=code')]);
-const sup={},sn={},con={},old=new Set(I.map(i=>nz(i.code)).filter(Boolean)),seen=new Set();S.forEach(s=>{sup[nz(s.code)]=s.id;sn[nz(s.name)]=s.id});C.forEach(c=>con[c.supplier_id+'|'+nz(c.title)]=c.id);
-let n=0;const dup=[],bad=[];
-for(const [ix,r] of rows.entries()){const L='سطر '+(ix+2),sc=String(r[HD[0]]==null?'':r[HD[0]]).trim(),ic=String(r[HD[5]]==null?'':r[HD[5]]).trim(),amt=+r[HD[7]],paid=+r[HD[8]]||0;
- if(!sc||!ic||!(amt>0)){bad.push(`${L}: بيانات ناقصة (كود المورد أو كود الفاتورة أو المبلغ)`);continue}
- if(paid>amt){bad.push(`${L}: المدفوع أكبر من مبلغ الفاتورة (${ic})`);continue}
- const k=nz(ic);if(old.has(k)){dup.push(`${L}: الفاتورة ${ic} — موجودة مسبقًا في النظام`);continue}if(seen.has(k)){dup.push(`${L}: الفاتورة ${ic} — مكررة داخل الملف`);continue}
- try{let sid=sup[nz(sc)]||sn[nz(r[HD[1]])];if(!sid){sid=(await api('suppliers','POST',{code:sc,name:r[HD[1]]||sc,phone:String(r[HD[2]]||''),field:r[HD[3]]}))[0].id;sup[nz(sc)]=sid;sn[nz(r[HD[1]])]=sid}
- const t=r[HD[4]]||'عقد سابق',ck=sid+'|'+nz(t);if(!con[ck])con[ck]=(await api('contracts','POST',{supplier_id:sid,title:t,created_by:U.id}))[0].id;
- let at=r[HD[10]]?new Date(r[HD[10]]):new Date();if(isNaN(at))at=new Date();at=at.toISOString();
- const inv=(await api('invoices','POST',{contract_id:con[ck],supplier_id:sid,type:r[HD[6]]=='income'?'income':'pay',code:ic,amount:amt,description:r[HD[9]],created_by:U.id,created_at:at}))[0];seen.add(k);
- if(paid>0)await api('payments','POST',{invoice_id:inv.id,amount:paid,status:'approved',created_by:U.id,approved_by:U.id,created_at:at,decided_at:at});n++}catch(x){bad.push(`${L}: ${errT(x)}`)}}
-const ul=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
-$('#res').innerHTML=`<div class="card"><h2>نتيجة الاستيراد</h2><div class="msg">تم رفع ${n} فاتورة جديدة</div>${dup.length?`<div class="msg e"><b>لم تُرفع (${dup.length}) فاتورة مكررة:</b>${ul(dup)}</div>`:''}${bad.length?`<div class="msg e"><b>لم تُرفع (${bad.length}) سطر لوجود مشكلة:</b>${ul(bad)}</div>`:''}</div>`;
-msg(`انتهى الاستيراد: ${n} مرفوعة، ${dup.length} مكررة، ${bad.length} بها مشكلة`)}catch(e){msg(errT(e),1)}}
+function imp(){importXlsx($('#f').files[0],U,'approved')}
 </script></body></html>

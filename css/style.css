@@ -41,3 +41,8 @@ button.b.g{background:var(--gold)}button.b.r{background:var(--bad)}button.b.s{wi
 .mb{background:#fff;border:1px solid var(--line);border-top:0;border-bottom:0;padding:0 12px}
 .mf{background:#e8f1f0;border:1px solid var(--line);border-top:0;border-radius:0 0 10px 10px;padding:7px 12px;font-size:.85rem}
 .bd{font-size:.75rem;padding:2px 10px;border-radius:12px}.bd.on{background:#d3ecdc;color:#237a4b}.bd.off{background:#f5d4cd;color:#b3341f}
+
+.ov{position:fixed;inset:0;background:#0009;display:flex;align-items:flex-end;justify-content:center;z-index:20}.ov.hide{display:none}
+.md{background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px;max-height:92vh;overflow:auto}@media(min-width:700px){.ov{align-items:center}.md{border-radius:20px}}
+.md h2{display:flex;justify-content:space-between}.md h2 button{border:0;background:none;font-size:1.6rem;cursor:pointer;color:#4a5f66}
+.ck{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.9rem}.ck input{width:auto}
