@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>كشف الحساب</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=6">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=8">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div class="card noprint"><h2>كشف الحساب</h2><label>المورد</label><select id="s"><option value="">كل الموردين</option></select>
@@ -8,16 +8,16 @@
 <label>الحقول المراد إظهارها</label><div class="chk" id="f"></div>
 <button class="b" onclick="run()">عرض التقرير</button></div>
 <div id="out" class="hide"><div class="noprint grid" style="margin-bottom:10px"><button class="b g s" onclick="print()">تحميل PDF</button><button class="b s" onclick="xl()">تحميل Excel</button></div><div class="sheet" id="sheet"></div><small class="noprint">في نافذة الطباعة اختر "حفظ كـ PDF".</small></div></main>
-<script src="js/app.js?v=6"></script><script>
+<script src="js/app.js?v=8"></script><script>
 const U=guard(['accountant','manager','admin']);let R=[],F=[];
-const FL={'التاريخ':r=>fdate(r.created_at),'كود المورد':r=>r.invoices.suppliers.code,'المورد':r=>r.invoices.suppliers.name,'المعاملة':r=>r.invoices.contracts.title,'كود الفاتورة':r=>r.invoices.code||'','البيان':r=>r.invoices.description||'','النوع':r=>r.invoices.type=='pay'?'دفع':'إيراد','المبلغ':r=>+r.amount,'المنفذ':r=>r.cr?.full_name||'','المعتمد':r=>r.ap?.full_name||''};
+const FL={'التاريخ':r=>fdate(r.created_at),'كود المورد':r=>r.invoices.suppliers.code,'المورد':r=>r.invoices.suppliers.name,'المعاملة':r=>r.invoices.contracts.title,'كود الفاتورة':r=>r.invoices.code||'','البيان':r=>r.invoices.description||'','النوع':r=>({pay:'مدفوع إلى',income:'إيداع من',bill:'فاتورة'})[r.invoices.type]||'','المبلغ':r=>+r.amount,'المنفذ':r=>r.cr?.full_name||'','المعتمد':r=>r.ap?.full_name||''};
 $('#f').innerHTML=Object.keys(FL).map(k=>`<label><input type="checkbox" value="${k}" checked>${k}</label>`).join('');
 api('suppliers?order=name').then(s=>$('#s').innerHTML+=s.map(x=>`<option value="${x.id}">${x.name}</option>`).join(''));
 function rng(n){const d=new Date();$('#d2').valueAsDate=d;d.setDate(d.getDate()-n);$('#d1').valueAsDate=d}
 async function run(){try{let q='payments?status=eq.approved&select=amount,created_at,invoices!inner(code,description,type,supplier_id,suppliers(name,code),contracts(title)),cr:users!payments_created_by_fkey(full_name),ap:users!payments_approved_by_fkey(full_name)&order=created_at.desc';
 if($('#s').value)q+='&invoices.supplier_id=eq.'+$('#s').value;if($('#d1').value)q+='&created_at=gte.'+$('#d1').value;if($('#d2').value)q+='&created_at=lte.'+$('#d2').value+'T23:59:59';
 R=(await api(q)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));F=[...document.querySelectorAll('#f input:checked')].map(x=>x.value);
-const pay=R.filter(r=>r.invoices.type=='pay').reduce((a,r)=>a+ +r.amount,0),inc=R.filter(r=>r.invoices.type!='pay').reduce((a,r)=>a+ +r.amount,0);
+const pay=R.filter(r=>r.invoices.type!='income').reduce((a,r)=>a+ +r.amount,0),inc=R.filter(r=>r.invoices.type=='income').reduce((a,r)=>a+ +r.amount,0);
 $('#sheet').innerHTML=`<div class="sh"><img src="assets/logo.png" alt=""><div><b>كشف حساب ${$('#s').selectedOptions[0].text}</b><br><small>${$('#d1').value||'البداية'} → ${$('#d2').value||'اليوم'} • أعدّه: ${U.full_name}</small></div></div>
 <div class="grid" style="margin:10px 0"><div class="stat"><small>إجمالي المدفوع</small><b>${money(pay)}</b></div><div class="stat"><small>إجمالي الإيراد</small><b>${money(inc)}</b></div></div><small>عدد السجلات: ${R.length} (الأحدث أولًا)</small><table style="margin-top:8px"><tr>${F.map(f=>`<th>${f}</th>`).join('')}</tr>${R.map(r=>`<tr>${F.map(f=>`<td>${FL[f](r)}</td>`).join('')}</tr>`).join('')}</table>`;
 $('#out').className=''}catch(e){msg('خطأ: '+e.message,1)}}

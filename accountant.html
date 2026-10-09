@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>المحاسبة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=6">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=8">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div id="home" class="cards"></div>
@@ -14,22 +14,22 @@
 <button class="b" onclick="addCon()">إنشاء السجل</button></div></section>
 
 <section id="inv" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>إنشاء فاتورة فرعية</h2>
-<label>السجل التعاقدي (اكتب للبحث باسم المورد أو التعاقد)</label><input id="ic" list="dlc" placeholder="ابحث..." autocomplete="off"><label>نوع الفاتورة</label><select id="it"><option value="pay">دفع إلى</option><option value="income">إيراد من</option></select>
+<label>السجل التعاقدي (اكتب للبحث باسم المورد أو التعاقد)</label><input id="ic" list="dlc" placeholder="ابحث..." autocomplete="off"><label>نوع الفاتورة</label><select id="it" onchange="tchg()"><option value="pay">مدفوع إلى</option><option value="income">إيداع من</option><option value="bill">فاتورة (تُسجَّل غير مدفوعة)</option></select>
 <label>كود الفاتورة</label><input id="icode"><label>تاريخ الفاتورة</label><input id="idate" type="date"><label>المبلغ</label><input id="iam" type="number" inputmode="decimal"><label>البيان</label><textarea id="ides" rows="2"></textarea>
-<label>صورة الفاتورة الورقية</label><input id="iimg" type="file" accept="image/*"><label>المبلغ المراد دفعه الآن</label><input id="ipay" type="number" inputmode="decimal">
+<label>صورة الفاتورة الورقية</label><input id="iimg" type="file" accept="image/*"><div id="payw"><label>المبلغ المراد دفعه الآن</label><input id="ipay" type="number" inputmode="decimal"></div><small id="bn" class="hide">الفاتورة تُسجَّل غير مدفوعة، ثم تضغط "دفع المتبقي" لإرسالها للاعتماد.</small>
 <button class="b" onclick="addInv()">حفظ وإرسال للاعتماد</button></div></section>
 
 <section id="open" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>فواتير بها مبالغ متبقية</h2><div id="olist"></div></div></section>
 <section id="edit" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>فواتير لم تُعتمد بعد (قابلة للتعديل)</h2><div id="elist"></div></div></section>
-<section id="imp" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>رفع معاملات من Excel</h2><small>الأعمدة: كود المورد | الاسم | الهاتف | المجال | العقد | كود الفاتورة | النوع (pay/income) | المبلغ | المدفوع | البيان | التاريخ (بأي صيغة). المدفوعات تنتظر اعتماد مدير الحسابات. الفواتير المكررة لا تُرفع.</small>
+<section id="imp" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>رفع معاملات من Excel</h2><small>الأعمدة: كود المورد | الاسم | الهاتف | المجال | العقد | كود الفاتورة | النوع (pay أو income أو bill — أو: مدفوع إلى / إيداع من / فاتورة) | المبلغ | المدفوع | البيان | التاريخ (بأي صيغة). أنواع مدفوع إلى / إيداع من تُسجَّل مباشرة. نوع فاتورة مورد يُسجَّل غير مدفوع، وإن كُتب مبلغ في عمود المدفوع ينتظر اعتماد مدير الحسابات. الفواتير المكررة لا تُرفع.</small>
 <button class="b g" style="margin-bottom:8px" onclick="tpl()">تحميل النموذج</button><input id="f" type="file" accept=".xlsx,.xls"><button class="b" onclick="importXlsx($('#f').files[0],U,'pending')">رفع واستيراد</button></div><div id="res"></div></section>
 <section id="list" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><input id="lq" placeholder="ابحث باسم المورد أو كوده" oninput="draw()"></div><div id="llist"></div></section>
 </main>
 <datalist id="dls"></datalist><datalist id="dlc"></datalist>
 <div id="ov" class="ov hide"><div class="md"><h2><span>تعديل الفاتورة</span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div><div class="grid"><button class="b" id="ms">حفظ التعديلات</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
-<script src="js/app.js?v=6"></script><script src="js/importer.js?v=6"></script><script>
+<script src="js/app.js?v=8"></script><script src="js/importer.js?v=8"></script><script>
 const U=guard(['accountant','manager','admin']);let S=[],C=[],I=[],SM={},CM={};
-const iso=d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')},tz=v=>new Date(v+'T12:00:00').toISOString(),cl=()=>$('#ov').className='ov hide',noApp=i=>!(i.payments||[]).some(p=>p.status=='approved');
+const iso=d=>new Date(d).toISOString().slice(0,10),tz=v=>v+' 09:00:00+00',cl=()=>$('#ov').className='ov hide',noApp=i=>!(i.payments||[]).some(p=>p.status=='approved');
 function go(id){['home','sup','con','inv','open','edit','imp','list'].forEach(x=>$('#'+x).classList.toggle('hide',x!=(id||'home')));$('#msg').className='hide';scrollTo(0,0)}
 async function load(){[S,C,I]=await Promise.all([api('suppliers?order=name'),api('contracts?select=*&order=created_at.desc'),api('invoices?select=*,suppliers(name),contracts(title),payments(id,amount,status)&order=created_at.desc')]);
  SM={};S.forEach(s=>SM[s.name+' ('+s.code+')']=s.id);CM={};C.forEach(c=>CM[(S.find(s=>s.id==c.supplier_id)?.name||'')+' — '+c.title]=c.id);
@@ -45,10 +45,11 @@ async function addSup(){try{const nm=nz($('#sn').value),cd=nz($('#sc').value);if
 async function addCon(){try{const sid=SM[$('#cs').value];if(!sid)return msg('اختر المورد من القائمة',1);if(!nz($('#ct').value))return msg('اكتب اسم المعاملة',1);if(C.some(c=>c.supplier_id==sid&&nz(c.title)==nz($('#ct').value)))return msg('هذا التعاقد مسجل لهذا المورد من قبل',1);
  await api('contracts','POST',{supplier_id:sid,title:$('#ct').value.trim(),agreed_amount:$('#ca').value||null,created_by:U.id});['cs','ct','ca'].forEach(i=>$('#'+i).value='');$('#info').className='hide';await load();go();msg('تم إنشاء السجل التعاقدي')}catch(e){msg(errT(e),1)}}
 async function addInv(){try{const cid=CM[$('#ic').value];if(!cid)return msg('اختر السجل التعاقدي من القائمة',1);const code=nz($('#icode').value);if(!code)return msg('أدخل كود الفاتورة',1);if(I.some(i=>nz(i.code)==code))return msg('كود الفاتورة مسجل من قبل ولا يمكن تكراره',1);
- const amt=+$('#iam').value,pay=+$('#ipay').value;if(!(amt>0))return msg('أدخل مبلغ الفاتورة',1);if(pay>amt)return msg('المبلغ المدفوع أكبر من الفاتورة',1);if(!$('#idate').value)return msg('اختر تاريخ الفاتورة',1);
+ const bill=$('#it').value=='bill',amt=+$('#iam').value,pay=bill?0:+$('#ipay').value;if(!(amt>0))return msg('أدخل مبلغ الفاتورة',1);if(pay>amt)return msg('المبلغ المدفوع أكبر من الفاتورة',1);if(!$('#idate').value)return msg('اختر تاريخ الفاتورة',1);
  const c=C.find(x=>x.id==cid),at=tz($('#idate').value);let url=null;if($('#iimg').files[0])url=await upload($('#iimg').files[0]);
  const i=(await api('invoices','POST',{contract_id:c.id,supplier_id:c.supplier_id,type:$('#it').value,code:$('#icode').value.trim(),amount:amt,description:$('#ides').value,image_url:url,created_by:U.id,created_at:at}))[0];
- if(pay>0)await api('payments','POST',{invoice_id:i.id,amount:pay,created_by:U.id,created_at:at});['ic','icode','iam','ides','ipay'].forEach(x=>$('#'+x).value='');$('#iimg').value='';$('#idate').valueAsDate=new Date();await load();go();msg('تم الحفظ — بانتظار اعتماد مدير الحسابات')}catch(e){msg(errT(e),1)}}
+ if(pay>0)await api('payments','POST',{invoice_id:i.id,amount:pay,created_by:U.id,created_at:at});['ic','icode','iam','ides','ipay'].forEach(x=>$('#'+x).value='');$('#iimg').value='';$('#it').value='pay';tchg();$('#idate').valueAsDate=new Date();await load();go();msg('تم الحفظ — بانتظار اعتماد مدير الحسابات')}catch(e){msg(errT(e),1)}}
+function tchg(){const b=$('#it').value=='bill';$('#payw').classList.toggle('hide',b);$('#bn').classList.toggle('hide',!b)}
 async function payMore(id,rest){const v=+prompt('المبلغ المراد دفعه (المتبقي '+rest+')');if(!v||v>rest)return;await api('payments','POST',{invoice_id:id,amount:v,created_by:U.id});await load();msg('أُرسل للاعتماد')}
 function oe(id){const i=I.find(x=>x.id==id),pp=(i.payments||[]).filter(p=>p.status=='pending');
  $('#mb').innerHTML=`<label>كود الفاتورة</label><input id="e1" value="${i.code||''}"><label>المبلغ</label><input id="e2" type="number" inputmode="decimal" value="${i.amount}"><label>البيان</label><textarea id="e3" rows="2">${i.description||''}</textarea><label>تاريخ الفاتورة</label><input id="e4" type="date" value="${iso(i.created_at)}">`+pp.map((p,k)=>`<label>المبلغ المراد دفعه${pp.length>1?' ('+(k+1)+')':''}</label><input id="ep${k}" type="number" inputmode="decimal" value="${p.amount}">`).join('');

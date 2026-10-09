@@ -1,7 +1,7 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>متابعة المورد</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=6"></head><body>
-<main><div id="msg" class="hide"></div><div class="cards" id="pb" style="margin-bottom:12px"></div><div id="pl" class="hide"></div><input id="q" placeholder="اكتب كود المورد أو اسمه أو جزءًا منه" oninput="find()" style="margin-bottom:12px"><div id="res"></div><div id="det" class="hide"></div></main>
-<script src="js/app.js?v=6"></script><script>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=8"><style>.chip{display:inline-block;background:#e8f1f0;border:1px solid var(--line);border-radius:20px;padding:4px 12px;margin:4px 4px 0 0;font-size:.85rem;cursor:pointer}.qb{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}</style></head><body>
+<main><div id="msg" class="hide"></div><div class="cards" id="pb" style="margin-bottom:12px"></div><div id="pl" class="hide"></div><div id="rp" class="hide"></div><input id="q" placeholder="اكتب كود المورد أو اسمه أو جزءًا منه" oninput="find()" style="margin-bottom:12px"><div id="res"></div><div id="det" class="hide"></div></main>
+<script src="js/app.js?v=8"></script><script>
 guard(['chairman','manager','admin']);let t;
 async function pend(){const box=$('#pl');if(!box.classList.contains('hide')){box.className='hide';return}
 const p=await api('payments?status=eq.pending&select=id,amount,created_at,invoices(amount,code,suppliers(name),contracts(title),payments(amount,status)),cr:users!payments_created_by_fkey(full_name)&order=created_at');
@@ -13,7 +13,7 @@ const s=await api(`suppliers?or=(name.ilike.*${encodeURIComponent(v)}*,code.ilik
 $('#res').innerHTML=s.map(x=>`<div class="card" onclick="show('${x.id}')" style="cursor:pointer"><span class="t">${x.name}</span><small>${x.code} • ${x.field||''}</small></div>`).join('')||'<div class="msg">لا توجد نتائج</div>'},250)}
 async function show(id){$('#res').innerHTML='';const s=(await api('suppliers?id=eq.'+id))[0];
 const inv=await api(`invoices?supplier_id=eq.${id}&select=*,contracts(title),cr:users!invoices_created_by_fkey(full_name),payments(amount,status,created_at,pc:users!payments_created_by_fkey(full_name))&order=created_at.desc`);
-const pays=inv.filter(i=>i.type=='pay'),tot=pays.reduce((a,i)=>a+paidOf(i),0),rest=pays.reduce((a,i)=>a+Math.max(0,i.amount-paidOf(i)),0),ld=i=>Math.max(0,...(i.payments||[]).filter(p=>p.status=='approved').map(p=>+new Date(p.created_at))),last=pays.filter(i=>paidOf(i)>0).sort((a,b)=>ld(b)-ld(a))[0];
+const pays=inv.filter(i=>i.type!='income'),tot=pays.reduce((a,i)=>a+paidOf(i),0),rest=pays.reduce((a,i)=>a+Math.max(0,i.amount-paidOf(i)),0),ld=i=>Math.max(0,...(i.payments||[]).filter(p=>p.status=='approved').map(p=>+new Date(p.created_at))),last=pays.filter(i=>paidOf(i)>0).sort((a,b)=>ld(b)-ld(a))[0];
 window._i=pays;const g={};pays.forEach(i=>{const k=i.contract_id;g[k]=g[k]||{t:i.contracts.title,p:0,r:0};g[k].p+=paidOf(i);g[k].r+=Math.max(0,i.amount-paidOf(i))});
 $('#det').className='';$('#det').innerHTML=`<div class="card"><h2>${s.name}</h2><small>${s.code} • ${s.phone?`<a href="tel:${s.phone}">${s.phone}</a>`:''} • ${s.field||''}</small></div>
 <div class="grid"><div class="stat"><small>إجمالي المدفوع</small><b>${money(tot)}</b></div><div class="stat link" onclick="partial()"><small>إجمالي الباقي (اضغط)</small><b>${money(rest)}</b></div></div>
@@ -27,6 +27,23 @@ function showPays(cid){const rows=[];_i.filter(i=>!cid||i.contract_id==cid).forE
 $('#more').innerHTML=`<h2 style="margin-top:14px">${cid?'مدفوعات التعاقد':'كل المدفوعات'}</h2>`+(months(rows,x=>x.p.created_at,x=>`<div class="row"><div><span class="t">${x.i.contracts.title}</span><small>${x.i.description||''} • ${fdate(x.p.created_at)}</small><small>نفّذها: ${x.p.pc?.full_name||''}</small></div><div class="amt">${money(x.p.amount)}</div></div>`,x=>+x.p.amount)||'<small>لا يوجد</small>');$('#more').scrollIntoView()}
 function partial(){const r=_i.filter(i=>i.amount-paidOf(i)>0.001).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
 $('#more').innerHTML='<h2 style="margin-top:14px">فواتير بها باقٍ</h2>'+(months(r,x=>x.created_at,i=>`<div class="row"><div><span class="t">${i.contracts.title}</span><small>${i.code||''} • ${i.description||''} • ${fdate(i.created_at)}</small><small>الفاتورة ${money(i.amount)} • مدفوع ${money(paidOf(i))}</small></div><div class="amt" style="color:var(--bad)">${money(i.amount-paidOf(i))}</div></div>`,i=>i.amount-paidOf(i))||'<small>لا يوجد باقٍ</small>');$('#more').scrollIntoView()}
-async function cnt(){const n=(await api('payments?status=eq.pending&select=id')).length;$('#pb').innerHTML=card('receipt','طلبات بانتظار الاعتماد',n?n+' طلب — اضغط للمتابعة وتعديل المبلغ':'لا توجد طلبات حالية',"pend()")}
+async function cnt(){const n=(await api('payments?status=eq.pending&select=id')).length;$('#pb').innerHTML=card('receipt','طلبات بانتظار الاعتماد',n?n+' طلب — اضغط للمتابعة وتعديل المبلغ':'لا توجد طلبات حالية',"pend()")+card('chart','المدفوعات حسب الفترة','يومي أو أسبوعي أو فترة محددة ولموردين محددين',"repOpen()")}
+
+let ALL=[],SEL=[],LM={};const lday=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+async function repOpen(){const b=$('#rp');if(!b.classList.contains('hide')){b.className='hide';return}
+ if(!ALL.length){ALL=await api('suppliers?select=id,name,code&order=name');ALL.forEach(s=>LM[s.name+' ('+s.code+')']=s.id)}
+ b.className='card';b.innerHTML=`<h2>المدفوعات حسب الفترة</h2><div class="qb"><button class="b g s" onclick="qr(0)">اليوم</button><button class="b g s" onclick="qr(7)">آخر 7 أيام</button><button class="b g s" onclick="qr('m')">هذا الشهر</button></div>
+<div class="grid"><div><label>من</label><input id="r1" type="date"></div><div><label>إلى</label><input id="r2" type="date"></div></div>
+<label>الموردون (اتركه فارغًا لكل الموردين)</label><input id="rs" list="dlr" placeholder="اكتب اسم المورد ثم اخترْه..." oninput="addS()" autocomplete="off"><datalist id="dlr">${Object.keys(LM).map(k=>`<option value="${k}">`).join('')}</datalist><div id="chips"></div>
+<button class="b" onclick="runRep()">عرض المدفوعات</button><div id="ro"></div>`;qr(7);b.scrollIntoView()}
+function qr(n){const t=new Date(),f=new Date();if(n=='m')f.setDate(1);else f.setDate(t.getDate()-(n?n-1:0));$('#r1').value=lday(f);$('#r2').value=lday(t)}
+function addS(){const id=LM[$('#rs').value];if(!id)return;if(!SEL.includes(id))SEL.push(id);$('#rs').value='';chips()}
+function rmS(id){SEL=SEL.filter(x=>x!=id);chips()}
+function chips(){$('#chips').innerHTML=SEL.map(id=>`<span class="chip" onclick="rmS('${id}')">${ALL.find(s=>s.id==id).name} ×</span>`).join('')}
+async function runRep(){try{let q='payments?status=eq.approved&invoices.type=neq.income&select=amount,created_at,invoices!inner(type,code,description,supplier_id,suppliers(name,code),contracts(title)),pc:users!payments_created_by_fkey(full_name)&order=created_at.desc';
+ if(SEL.length)q+='&invoices.supplier_id=in.('+SEL.join(',')+')';const a=$('#r1').value,b=$('#r2').value;if(a)q+='&created_at=gte.'+a+'T00:00:00Z';if(b)q+='&created_at=lte.'+b+'T23:59:59Z';
+ const p=await api(q),g={};p.forEach(x=>{const k=x.invoices.supplier_id;(g[k]=g[k]||{n:x.invoices.suppliers.name,c:x.invoices.suppliers.code,t:0,r:[]});g[k].t+=+x.amount;g[k].r.push(x)});
+ const L=Object.values(g).sort((x,y)=>y.t-x.t),tot=p.reduce((s,x)=>s+ +x.amount,0);
+ $('#ro').innerHTML=`<div class="grid" style="margin-top:12px"><div class="stat"><small>إجمالي المدفوع</small><b>${money(tot)}</b></div><div class="stat"><small>عدد الدفعات / الموردين</small><b>${p.length} / ${L.length}</b></div></div>`+(L.map(v=>`<details class="card" style="margin-top:10px" ${L.length==1?'open':''}><summary><b>${v.n}</b> <small>${v.c}</small> <span class="amt" style="float:left">${money(v.t)}</span></summary>${v.r.map(x=>`<div class="row"><div><span class="t">${x.invoices.contracts.title}</span><small>${x.invoices.description||''} • ${fdate(x.created_at)}</small><small>نفّذها: ${x.pc?.full_name||''}</small></div><div class="amt">${money(x.amount)}</div></div>`).join('')}</details>`).join('')||'<div class="msg" style="margin-top:12px">لا توجد مدفوعات معتمدة في هذه الفترة</div>')}catch(e){msg(errT(e),1)}}
 cnt();
 </script></body></html>
