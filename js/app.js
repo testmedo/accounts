@@ -24,3 +24,5 @@ const msg=(t,e)=>{const m=$('#msg');m.className='msg'+(e?' e':'');m.textContent=
 
 const nz=s=>String(s==null?'':s).trim().replace(/\s+/g,' ').toLowerCase();
 const errT=e=>e.dup?'هذا السجل مكرر ولا يمكن إضافته أو حفظه':'خطأ: '+e.message;
+
+const pendOf=i=>(i.payments||[]).filter(p=>p.status=='pending').reduce((s,p)=>s+Number(p.amount),0);
