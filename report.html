@@ -1,6 +1,6 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>التقارير</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=11">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div class="card noprint"><h2>التقارير وكشف الحساب</h2>
 <label>نوع التقرير</label><select id="m" onchange="flds()"><option value="pay">المدفوعات المعتمدة</option><option value="part">فواتير بها باقٍ (غير مدفوعة بالكامل)</option><option value="none">فواتير لم يُدفع منها شيء</option><option value="all">كل الفواتير</option></select>
@@ -10,7 +10,7 @@
 <div class="grid" style="margin-top:8px"><button class="b g s" onclick="rng(7)">آخر أسبوع</button><button class="b g s" onclick="rng(30)">آخر شهر</button></div>
 <label>الحقول المراد إظهارها</label><div class="chk" id="f"></div>
 <button class="b" onclick="run()">عرض التقرير</button></div>
-<div id="out" class="hide"><div class="noprint grid" style="margin-bottom:10px"><button class="b g s" onclick="pr()">تحميل PDF</button><button class="b s" onclick="xl()">تحميل Excel</button></div><div class="sheet" id="sheet"></div><small class="noprint">في نافذة الطباعة اختر "حفظ كـ PDF".</small></div></main>
+<div id="out" class="hide"><div class="noprint" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"><button class="b g s" onclick="dlPdf()">تحميل PDF</button><button class="b s" onclick="xl()">تحميل Excel</button><button class="b s" style="background:#4a5f66" onclick="pr()">طباعة</button></div><div class="sheet" id="sheet"></div><small class="noprint">يُنشأ ملف PDF حقيقي بكل الأعمدة والصفوف دون اقتطاع.</small></div></main>
 <script src="js/app.js?v=11"></script><script>
 const U=guard(['accountant','manager','admin']);let R=[],F=[],SM={},MODE='pay';
 const TN={pay:'مدفوع إلى',income:'إيداع من',bill:'فاتورة'},mn=d=>new Date(d).toLocaleDateString('ar-EG',{month:'long',year:'numeric',timeZone:'UTC'}),rem=i=>i.amount-paidOf(i),
@@ -39,6 +39,18 @@ async function run(){try{const sv=$('#s').value.trim(),sid=sv?SM[sv]:'';if(sv&&!
  $('#sheet').innerHTML=`<div class="sh"><img src="assets/logo.png" alt=""><div><b>${t}</b><br><small>${a||'البداية'} → ${b||'اليوم'} • أعدّه: ${U.full_name}</small></div></div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0">${stats.map(([k,v])=>`<div class="stat"><small>${k}</small><b>${money(v)}</b></div>`).join('')}</div><small>عدد السجلات: ${R.length} (الأحدث أولًا)</small>${body}`;
  $('#out').className=''}catch(e){msg(errT(e),1)}}
+async function dlPdf(){try{msg('جارٍ إنشاء ملف PDF… قد يستغرق بعض الوقت للتقارير الكبيرة');await document.fonts.ready;
+ const n=F.length,land=n>6,W=land?1500:1000,fs=n>11?11:n>8?12:14,{jsPDF}=window.jspdf;
+ const css=el=>{el.style.width=W+'px';el.style.overflow='visible';el.style.border='0';el.style.padding='16px';el.style.background='#fff';el.querySelectorAll('table').forEach(t=>{t.style.fontSize=fs+'px';t.style.width='100%'})};
+ const m=$('#sheet').cloneNode(true);m.removeAttribute('id');m.style.position='absolute';m.style.left='-99999px';m.style.top='0';document.body.appendChild(m);css(m);
+ const top=m.getBoundingClientRect().top,H=Math.ceil(m.scrollHeight),cuts=[...m.querySelectorAll('tr')].map(t=>t.getBoundingClientRect().bottom-top).filter(v=>v>0);document.body.removeChild(m);
+ const pdf=new jsPDF({orientation:land?'l':'p',unit:'pt',format:'a4'}),pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),k=(pw-40)/W,pagePx=(ph-55)/k,rg=[];
+ let y=0;while(y<H-1){const lim=y+pagePx;let end=H;if(lim<H){const c=cuts.filter(v=>v>y+40&&v<=lim);end=c.length?Math.max(...c):lim}rg.push([y,end]);y=end}
+ for(let i=0;i<rg.length;i++){const [a,b]=rg[i];msg(`جارٍ إنشاء ملف PDF… صفحة ${i+1} من ${rg.length}`);const sc=Math.min(2,Math.sqrt(12e6/(W*(b-a))));
+  const cv=await html2canvas($('#sheet'),{scale:sc,backgroundColor:'#fff',windowWidth:W+60,windowHeight:H+300,y:a,height:b-a,width:W,scrollX:0,scrollY:0,onclone:d=>{const s=d.getElementById('sheet');css(s);s.style.position='absolute';s.style.left='0';s.style.top='0'}});
+  if(i)pdf.addPage();pdf.addImage(cv.toDataURL('image/png'),'PNG',20,20,W*k,(b-a)*k);cv.width=cv.height=0}
+ for(let p=1;p<=rg.length;p++){pdf.setPage(p);pdf.setFontSize(9);pdf.text(p+' / '+rg.length,pw/2,ph-12,{align:'center'})}
+ pdf.save('report_'+new Date().toISOString().slice(0,10)+'.pdf');msg('تم تحميل ملف PDF ('+rg.length+' صفحة)')}catch(e){msg('تعذر إنشاء PDF: '+e.message+' — جرّب زر "طباعة" أو تحميل Excel',1)}}
 function pr(){const n=F.length;let s=document.getElementById('pg');if(!s){s=document.createElement('style');s.id='pg';document.head.appendChild(s)}
  s.textContent=`@page{size:A4 ${n>6?'landscape':'portrait'};margin:8mm}@media print{.sheet table{font-size:${n>11?8:n>8?9:11}px}}`;window.print()}
 function xl(){const L=MODE=='pay'?FLP:FLI;const w=XLSX.utils.book_new();XLSX.utils.book_append_sheet(w,XLSX.utils.json_to_sheet(R.map(r=>Object.fromEntries(F.map(f=>[f,L[f](r)])))),'تقرير');XLSX.writeFile(w,'تقرير.xlsx')}
