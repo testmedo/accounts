@@ -1,7 +1,7 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الاعتمادات</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=9"></head><body>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=10"></head><body>
 <main><div id="msg" class="hide"></div><div class="tabs"><button id="t1" class="on" onclick="tab(1)">بانتظار الاعتماد</button><button id="t2" onclick="tab(2)">الاعتمادات السابقة</button></div><div class="card" id="list"></div></main>
-<script src="js/app.js?v=9"></script><script>
+<script src="js/app.js?v=10"></script><script>
 const U=guard(['manager','admin']);let T=1;
 const SEL='select=*,invoices(id,payments(status),code,amount,description,image_url,created_at,ic:users!invoices_created_by_fkey(full_name),suppliers(name,code),contracts(title)),cr:users!payments_created_by_fkey(full_name),ap:users!payments_approved_by_fkey(full_name)';
 function tab(n){T=n;$('#t1').className=n==1?'on':'';$('#t2').className=n==2?'on':'';load()}

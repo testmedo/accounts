@@ -1,25 +1,43 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>كشف الحساب</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=9">
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>التقارير</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=10">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
-<div class="card noprint"><h2>كشف الحساب</h2><label>المورد</label><select id="s"><option value="">كل الموردين</option></select>
+<div class="card noprint"><h2>التقارير وكشف الحساب</h2>
+<label>نوع التقرير</label><select id="m" onchange="flds()"><option value="pay">المدفوعات المعتمدة</option><option value="part">فواتير بها باقٍ (غير مدفوعة بالكامل)</option><option value="none">فواتير لم يُدفع منها شيء</option><option value="all">كل الفواتير</option></select>
+<label>نوع الفاتورة</label><select id="ty"><option value="">كل الأنواع</option><option value="pay">مدفوع إلى</option><option value="income">إيداع من</option><option value="bill">فاتورة</option></select>
+<label>المورد (اكتب للبحث بالاسم أو الكود — اتركه فارغًا لكل الموردين)</label><input id="s" list="dl" placeholder="ابحث عن المورد..." autocomplete="off"><datalist id="dl"></datalist>
 <div class="grid"><div><label>من</label><input id="d1" type="date"></div><div><label>إلى</label><input id="d2" type="date"></div></div>
 <div class="grid" style="margin-top:8px"><button class="b g s" onclick="rng(7)">آخر أسبوع</button><button class="b g s" onclick="rng(30)">آخر شهر</button></div>
 <label>الحقول المراد إظهارها</label><div class="chk" id="f"></div>
 <button class="b" onclick="run()">عرض التقرير</button></div>
 <div id="out" class="hide"><div class="noprint grid" style="margin-bottom:10px"><button class="b g s" onclick="print()">تحميل PDF</button><button class="b s" onclick="xl()">تحميل Excel</button></div><div class="sheet" id="sheet"></div><small class="noprint">في نافذة الطباعة اختر "حفظ كـ PDF".</small></div></main>
-<script src="js/app.js?v=9"></script><script>
-const U=guard(['accountant','manager','admin']);let R=[],F=[];
-const FL={'التاريخ':r=>fdate(r.created_at),'كود المورد':r=>r.invoices.suppliers.code,'المورد':r=>r.invoices.suppliers.name,'المعاملة':r=>r.invoices.contracts.title,'كود الفاتورة':r=>r.invoices.code||'','البيان':r=>r.invoices.description||'','النوع':r=>({pay:'مدفوع إلى',income:'إيداع من',bill:'فاتورة'})[r.invoices.type]||'','المبلغ':r=>+r.amount,'المنفذ':r=>r.cr?.full_name||'','المعتمد':r=>r.ap?.full_name||'','بيان الدفعة':r=>r.note||''};
-$('#f').innerHTML=Object.keys(FL).map(k=>`<label><input type="checkbox" value="${k}" checked>${k}</label>`).join('');
-api('suppliers?order=name').then(s=>$('#s').innerHTML+=s.map(x=>`<option value="${x.id}">${x.name}</option>`).join(''));
+<script src="js/app.js?v=10"></script><script>
+const U=guard(['accountant','manager','admin']);let R=[],F=[],SM={},MODE='pay';
+const TN={pay:'مدفوع إلى',income:'إيداع من',bill:'فاتورة'},mn=d=>new Date(d).toLocaleDateString('ar-EG',{month:'long',year:'numeric',timeZone:'UTC'}),rem=i=>i.amount-paidOf(i),
+ who=i=>[...new Set((i.payments||[]).filter(p=>p.status=='approved').map(p=>p.pc?.full_name).filter(Boolean))].join('، ');
+const FLP={'التاريخ':r=>fdate(r.created_at),'كود المورد':r=>r.invoices.suppliers.code,'المورد':r=>r.invoices.suppliers.name,'المعاملة':r=>r.invoices.contracts.title,'كود الفاتورة':r=>r.invoices.code||'','البيان':r=>r.invoices.description||'','النوع':r=>TN[r.invoices.type]||'','المبلغ':r=>+r.amount,'المنفذ':r=>r.cr?.full_name||'','المعتمد':r=>r.ap?.full_name||'','بيان الدفعة':r=>r.note||''};
+const FLI={'الشهر':i=>mn(i.created_at),'التاريخ':i=>fdate(i.created_at),'كود المورد':i=>i.suppliers.code,'المورد':i=>i.suppliers.name,'المعاملة':i=>i.contracts.title,'كود الفاتورة':i=>i.code||'','البيان':i=>i.description||'','النوع':i=>TN[i.type]||'','مبلغ الفاتورة':i=>+i.amount,'المدفوع':i=>paidOf(i),'المتبقي':i=>rem(i),'أنشأها':i=>i.cr?.full_name||'','دفعها':i=>who(i)};
+const FL=()=>$('#m').value=='pay'?FLP:FLI;
+function flds(){$('#f').innerHTML=Object.keys(FL()).map(k=>`<label><input type="checkbox" value="${k}" checked>${k}</label>`).join('')}flds();
+api('suppliers?order=name').then(s=>{s.forEach(x=>SM[x.name+' ('+x.code+')']=x.id);$('#dl').innerHTML=Object.keys(SM).map(k=>`<option value="${k}">`).join('')});
 function rng(n){const d=new Date();$('#d2').valueAsDate=d;d.setDate(d.getDate()-n);$('#d1').valueAsDate=d}
-async function run(){try{let q='payments?status=eq.approved&select=amount,note,created_at,invoices!inner(code,description,type,supplier_id,suppliers(name,code),contracts(title)),cr:users!payments_created_by_fkey(full_name),ap:users!payments_approved_by_fkey(full_name)&order=created_at.desc';
-if($('#s').value)q+='&invoices.supplier_id=eq.'+$('#s').value;if($('#d1').value)q+='&created_at=gte.'+$('#d1').value;if($('#d2').value)q+='&created_at=lte.'+$('#d2').value+'T23:59:59';
-R=(await api(q)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));F=[...document.querySelectorAll('#f input:checked')].map(x=>x.value);
-const pay=R.filter(r=>r.invoices.type!='income').reduce((a,r)=>a+ +r.amount,0),inc=R.filter(r=>r.invoices.type=='income').reduce((a,r)=>a+ +r.amount,0);
-$('#sheet').innerHTML=`<div class="sh"><img src="assets/logo.png" alt=""><div><b>كشف حساب ${$('#s').selectedOptions[0].text}</b><br><small>${$('#d1').value||'البداية'} → ${$('#d2').value||'اليوم'} • أعدّه: ${U.full_name}</small></div></div>
-<div class="grid" style="margin:10px 0"><div class="stat"><small>إجمالي المدفوع</small><b>${money(pay)}</b></div><div class="stat"><small>إجمالي الإيراد</small><b>${money(inc)}</b></div></div><small>عدد السجلات: ${R.length} (الأحدث أولًا)</small><table style="margin-top:8px"><tr>${F.map(f=>`<th>${f}</th>`).join('')}</tr>${R.map(r=>`<tr>${F.map(f=>`<td>${FL[f](r)}</td>`).join('')}</tr>`).join('')}</table>`;
-$('#out').className=''}catch(e){msg('خطأ: '+e.message,1)}}
-function xl(){const w=XLSX.utils.book_new();XLSX.utils.book_append_sheet(w,XLSX.utils.json_to_sheet(R.map(r=>Object.fromEntries(F.map(f=>[f,FL[f](r)])))),'كشف حساب');XLSX.writeFile(w,'كشف_حساب.xlsx')}
+async function run(){try{const sv=$('#s').value.trim(),sid=sv?SM[sv]:'';if(sv&&!sid)return msg('اختر المورد من القائمة',1);MODE=$('#m').value;const ty=$('#ty').value,a=$('#d1').value,b=$('#d2').value;
+ F=[...document.querySelectorAll('#f input:checked')].map(x=>x.value);if(!F.length)return msg('اختر حقلًا واحدًا على الأقل',1);
+ let t,h,stats,body;const nm=sid?sv:'كل الموردين';
+ if(MODE=='pay'){let q='payments?status=eq.approved&select=amount,note,created_at,invoices!inner(code,description,type,supplier_id,suppliers(name,code),contracts(title)),cr:users!payments_created_by_fkey(full_name),ap:users!payments_approved_by_fkey(full_name)&order=created_at.desc';
+  if(sid)q+='&invoices.supplier_id=eq.'+sid;if(ty)q+='&invoices.type=eq.'+ty;if(a)q+='&created_at=gte.'+a+'T00:00:00Z';if(b)q+='&created_at=lte.'+b+'T23:59:59Z';
+  R=(await api(q)).sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));const pay=R.filter(r=>r.invoices.type!='income').reduce((s,r)=>s+ +r.amount,0),inc=R.filter(r=>r.invoices.type=='income').reduce((s,r)=>s+ +r.amount,0);
+  t='كشف حساب '+nm;stats=[['إجمالي المدفوع',pay],['إجمالي الإيراد',inc]];
+  body=`<table style="margin-top:8px"><tr>${F.map(f=>`<th>${f}</th>`).join('')}</tr>${R.map(r=>`<tr>${F.map(f=>`<td>${FLP[f](r)}</td>`).join('')}</tr>`).join('')}</table>`}
+ else{let q='invoices?select=*,suppliers(name,code),contracts(title),cr:users!invoices_created_by_fkey(full_name),payments(amount,status,pc:users!payments_created_by_fkey(full_name))&order=created_at.desc';
+  if(sid)q+='&supplier_id=eq.'+sid;if(ty)q+='&type=eq.'+ty;else if(MODE!='all')q+='&type=neq.income';if(a)q+='&created_at=gte.'+a+'T00:00:00Z';if(b)q+='&created_at=lte.'+b+'T23:59:59Z';
+  R=(await api(q)).filter(i=>MODE=='part'?rem(i)>0.001:MODE=='none'?paidOf(i)==0:true).sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));
+  t=({part:'الفواتير التي بها باقٍ',none:'الفواتير التي لم يُدفع منها شيء',all:'كل الفواتير'})[MODE]+' — '+nm;
+  stats=[['إجمالي الفواتير',R.reduce((s,i)=>s+ +i.amount,0)],['إجمالي المدفوع',R.reduce((s,i)=>s+paidOf(i),0)],['إجمالي المتبقي',R.reduce((s,i)=>s+rem(i),0)]];
+  const g={};R.forEach(i=>{const k=i.created_at.slice(0,7);(g[k]=g[k]||[]).push(i)});
+  body=`<table style="margin-top:8px"><tr>${F.map(f=>`<th>${f}</th>`).join('')}</tr>${Object.keys(g).sort().reverse().map(k=>`<tr><td colspan="${F.length}" style="background:#17313b;color:#fff"><b>${mn(g[k][0].created_at)}</b> — ${g[k].length} فاتورة • المتبقي: ${money(g[k].reduce((s,i)=>s+rem(i),0))}</td></tr>`+g[k].map(i=>`<tr>${F.map(f=>`<td>${FLI[f](i)}</td>`).join('')}</tr>`).join('')).join('')}</table>`}
+ $('#sheet').innerHTML=`<div class="sh"><img src="assets/logo.png" alt=""><div><b>${t}</b><br><small>${a||'البداية'} → ${b||'اليوم'} • أعدّه: ${U.full_name}</small></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0">${stats.map(([k,v])=>`<div class="stat"><small>${k}</small><b>${money(v)}</b></div>`).join('')}</div><small>عدد السجلات: ${R.length} (الأحدث أولًا)</small>${body}`;
+ $('#out').className=''}catch(e){msg(errT(e),1)}}
+function xl(){const L=MODE=='pay'?FLP:FLI;const w=XLSX.utils.book_new();XLSX.utils.book_append_sheet(w,XLSX.utils.json_to_sheet(R.map(r=>Object.fromEntries(F.map(f=>[f,L[f](r)])))),'تقرير');XLSX.writeFile(w,'تقرير.xlsx')}
 </script></body></html>

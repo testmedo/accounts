@@ -26,3 +26,7 @@ const nz=s=>String(s==null?'':s).trim().replace(/\s+/g,' ').toLowerCase();
 const errT=e=>e.dup?'هذا السجل مكرر ولا يمكن إضافته أو حفظه':'خطأ: '+e.message;
 
 const pendOf=i=>(i.payments||[]).filter(p=>p.status=='pending').reduce((s,p)=>s+Number(p.amount),0);
+
+function months(list,dk,row,tot){const g={};list.forEach(x=>{const d=new Date(dk(x)),k=d.getUTCFullYear()+'-'+d.getUTCMonth();(g[k]=g[k]||{y:d.getUTCFullYear(),m:d.getUTCMonth(),a:[]}).a.push(x)});
+return Object.values(g).sort((a,b)=>b.y*12+b.m-a.y*12-a.m).map(m=>{const f=new Date(m.y,m.m,1),l=new Date(m.y,m.m+1,0);
+return `<div class="mh"><b>${f.toLocaleDateString('ar-EG',{month:'long',year:'numeric'})}</b><span>بداية الشهر: ${fdate(f)}</span></div><div class="mb">${m.a.map(row).join('')}</div><div class="mf">نهاية الشهر: ${fdate(l)} • إجمالي الشهر: <b>${money(m.a.reduce((s,x)=>s+tot(x),0))}</b></div>`}).join('')}

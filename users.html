@@ -1,9 +1,9 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الحسابات</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=9"></head><body>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=10"></head><body>
 <main><div id="msg" class="hide"></div>
 <details class="card"><summary><b>+ إنشاء حساب جديد</b></summary><label>الاسم</label><input id="n_name"><label>اسم المستخدم</label><input id="n_user" autocapitalize="none"><label>كلمة المرور</label><input id="n_pass"><label>الصلاحية</label><select id="n_role"></select><button class="b" onclick="add()">إنشاء</button></details>
 <div id="l"></div></main>
-<script src="js/app.js?v=9"></script><script>
+<script src="js/app.js?v=10"></script><script>
 const U=guard(['admin']);const RL={accountant:'محاسب',manager:'مدير الحسابات',chairman:'رئيس مجلس الأمناء',admin:'أدمن'};
 const opts=s=>Object.entries(RL).map(([k,v])=>`<option value="${k}" ${k==s?'selected':''}>${v}</option>`).join('');$('#n_role').innerHTML=opts('accountant');
 async function load(){const u=await api('users?order=full_name');$('#l').innerHTML=u.map(x=>`<details class="card"><summary><b>${x.full_name}</b> <small>${x.username} • ${RL[x.role]}</small> <span class="bd ${x.active?'on':'off'}">${x.active?'نشط':'موقوف'}</span></summary>

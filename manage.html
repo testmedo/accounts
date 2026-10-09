@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>التعديل والحذف</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=9">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=10">
 <style>.ov{position:fixed;inset:0;background:#0009;display:flex;align-items:flex-end;justify-content:center;z-index:20}.ov.hide{display:none}
 .md{background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px;max-height:92vh;overflow:auto}@media(min-width:700px){.ov{align-items:center}.md{border-radius:20px}}
 .md h2{display:flex;justify-content:space-between}.md h2 button{border:0;background:none;font-size:1.6rem;cursor:pointer;color:#4a5f66}
@@ -10,7 +10,7 @@
 
 <div id="ov" class="ov hide"><div class="md"><h2><span id="mt"></span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div>
 <div class="grid"><button class="b" id="ms">حفظ التعديلات</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
-<script src="js/app.js?v=9"></script><script>
+<script src="js/app.js?v=10"></script><script>
 guard(['admin']);let I=[];const ST={pending:'معلق',approved:'معتمد',rejected:'مرفوض'},iso=d=>new Date(d).toISOString().slice(0,10),tz=v=>v+' 09:00:00+00';
 api('suppliers?order=name').then(s=>$('#s').innerHTML+=s.map(x=>`<option value="${x.id}">${x.name} (${x.code})</option>`).join(''));
 async function load(){const sid=$('#s').value;I=await api('invoices?select=*,suppliers(name),contracts(title),payments(id,amount,status,created_at)&order=created_at.desc'+(sid?'&supplier_id=eq.'+sid:'&limit=300'));draw()}
