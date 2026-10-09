@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>المحاسبة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=10">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=11">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div id="home" class="cards"></div>
@@ -27,7 +27,7 @@
 </main>
 <datalist id="dls"></datalist><datalist id="dlc"></datalist>
 <div id="ov" class="ov hide"><div class="md"><h2><span id="mt">تعديل الفاتورة</span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div><div class="grid"><button class="b" id="ms">حفظ التعديلات</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
-<script src="js/app.js?v=10"></script><script src="js/importer.js?v=10"></script><script>
+<script src="js/app.js?v=11"></script><script src="js/importer.js?v=11"></script><script>
 const U=guard(['accountant','manager','admin']);let S=[],C=[],I=[],SM={},CM={};
 const iso=d=>new Date(d).toISOString().slice(0,10),tz=v=>v+' 09:00:00+00',cl=()=>$('#ov').className='ov hide',noApp=i=>!(i.payments||[]).some(p=>p.status=='approved');
 const who=i=>{const n=[...new Set((i.payments||[]).filter(p=>p.status=='approved').map(p=>p.pc?.full_name).filter(Boolean))];return `<small>التاريخ: ${fdate(i.created_at)} • أنشأها: ${i.cr?.full_name||'—'}</small>${n.length?`<small>دفعها: ${n.join('، ')}</small>`:''}`};

@@ -46,3 +46,5 @@ button.b.g{background:var(--gold)}button.b.r{background:var(--bad)}button.b.s{wi
 .md{background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px;max-height:92vh;overflow:auto}@media(min-width:700px){.ov{align-items:center}.md{border-radius:20px}}
 .md h2{display:flex;justify-content:space-between}.md h2 button{border:0;background:none;font-size:1.6rem;cursor:pointer;color:#4a5f66}
 .ck{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.9rem}.ck input{width:auto}
+
+@media print{.sheet{overflow:visible!important;padding:0!important;border:0!important}.sheet table{width:100%!important;table-layout:auto}.sheet th,.sheet td{padding:3px 4px!important;word-break:break-word;font-size:inherit}.sheet *{-webkit-print-color-adjust:exact;print-color-adjust:exact}.stat{break-inside:avoid}tr{break-inside:avoid}thead{display:table-header-group}}

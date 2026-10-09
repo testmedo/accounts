@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>التقارير</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=10">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=11">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div class="card noprint"><h2>التقارير وكشف الحساب</h2>
@@ -10,8 +10,8 @@
 <div class="grid" style="margin-top:8px"><button class="b g s" onclick="rng(7)">آخر أسبوع</button><button class="b g s" onclick="rng(30)">آخر شهر</button></div>
 <label>الحقول المراد إظهارها</label><div class="chk" id="f"></div>
 <button class="b" onclick="run()">عرض التقرير</button></div>
-<div id="out" class="hide"><div class="noprint grid" style="margin-bottom:10px"><button class="b g s" onclick="print()">تحميل PDF</button><button class="b s" onclick="xl()">تحميل Excel</button></div><div class="sheet" id="sheet"></div><small class="noprint">في نافذة الطباعة اختر "حفظ كـ PDF".</small></div></main>
-<script src="js/app.js?v=10"></script><script>
+<div id="out" class="hide"><div class="noprint grid" style="margin-bottom:10px"><button class="b g s" onclick="pr()">تحميل PDF</button><button class="b s" onclick="xl()">تحميل Excel</button></div><div class="sheet" id="sheet"></div><small class="noprint">في نافذة الطباعة اختر "حفظ كـ PDF".</small></div></main>
+<script src="js/app.js?v=11"></script><script>
 const U=guard(['accountant','manager','admin']);let R=[],F=[],SM={},MODE='pay';
 const TN={pay:'مدفوع إلى',income:'إيداع من',bill:'فاتورة'},mn=d=>new Date(d).toLocaleDateString('ar-EG',{month:'long',year:'numeric',timeZone:'UTC'}),rem=i=>i.amount-paidOf(i),
  who=i=>[...new Set((i.payments||[]).filter(p=>p.status=='approved').map(p=>p.pc?.full_name).filter(Boolean))].join('، ');
@@ -39,5 +39,7 @@ async function run(){try{const sv=$('#s').value.trim(),sid=sv?SM[sv]:'';if(sv&&!
  $('#sheet').innerHTML=`<div class="sh"><img src="assets/logo.png" alt=""><div><b>${t}</b><br><small>${a||'البداية'} → ${b||'اليوم'} • أعدّه: ${U.full_name}</small></div></div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0">${stats.map(([k,v])=>`<div class="stat"><small>${k}</small><b>${money(v)}</b></div>`).join('')}</div><small>عدد السجلات: ${R.length} (الأحدث أولًا)</small>${body}`;
  $('#out').className=''}catch(e){msg(errT(e),1)}}
+function pr(){const n=F.length;let s=document.getElementById('pg');if(!s){s=document.createElement('style');s.id='pg';document.head.appendChild(s)}
+ s.textContent=`@page{size:A4 ${n>6?'landscape':'portrait'};margin:8mm}@media print{.sheet table{font-size:${n>11?8:n>8?9:11}px}}`;window.print()}
 function xl(){const L=MODE=='pay'?FLP:FLI;const w=XLSX.utils.book_new();XLSX.utils.book_append_sheet(w,XLSX.utils.json_to_sheet(R.map(r=>Object.fromEntries(F.map(f=>[f,L[f](r)])))),'تقرير');XLSX.writeFile(w,'تقرير.xlsx')}
 </script></body></html>

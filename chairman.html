@@ -1,7 +1,7 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>متابعة المورد</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=10"><style>.chip{display:inline-block;background:#e8f1f0;border:1px solid var(--line);border-radius:20px;padding:4px 12px;margin:4px 4px 0 0;font-size:.85rem;cursor:pointer}.qb{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}</style></head><body>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=11"><style>.chip{display:inline-block;background:#e8f1f0;border:1px solid var(--line);border-radius:20px;padding:4px 12px;margin:4px 4px 0 0;font-size:.85rem;cursor:pointer}.qb{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}</style></head><body>
 <main><div id="msg" class="hide"></div><div class="cards" id="pb" style="margin-bottom:12px"></div><div id="pl" class="hide"></div><div id="rp" class="hide"></div><input id="q" placeholder="اكتب كود المورد أو اسمه أو جزءًا منه" oninput="find()" style="margin-bottom:12px"><div id="res"></div><div id="det" class="hide"></div></main>
-<script src="js/app.js?v=10"></script><script>
+<script src="js/app.js?v=11"></script><script>
 guard(['chairman','manager','admin']);let t;
 async function pend(){const box=$('#pl');if(!box.classList.contains('hide')){box.className='hide';return}
 const p=await api('payments?status=eq.pending&select=id,amount,note,created_at,invoices(amount,code,suppliers(name),contracts(title),payments(amount,status)),cr:users!payments_created_by_fkey(full_name)&order=created_at');
