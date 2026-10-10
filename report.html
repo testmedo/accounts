@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>التقارير</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=11">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=12">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div class="card noprint"><h2>التقارير وكشف الحساب</h2>
@@ -11,7 +11,7 @@
 <label>الحقول المراد إظهارها</label><div class="chk" id="f"></div>
 <button class="b" onclick="run()">عرض التقرير</button></div>
 <div id="out" class="hide"><div class="noprint" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"><button class="b g s" onclick="dlPdf()">تحميل PDF</button><button class="b s" onclick="xl()">تحميل Excel</button><button class="b s" style="background:#4a5f66" onclick="pr()">طباعة</button></div><div class="sheet" id="sheet"></div><small class="noprint">يُنشأ ملف PDF حقيقي بكل الأعمدة والصفوف دون اقتطاع.</small></div></main>
-<script src="js/app.js?v=11"></script><script>
+<script src="js/app.js?v=12"></script><script>
 const U=guard(['accountant','manager','admin']);let R=[],F=[],SM={},MODE='pay';
 const TN={pay:'مدفوع إلى',income:'إيداع من',bill:'فاتورة'},mn=d=>new Date(d).toLocaleDateString('ar-EG',{month:'long',year:'numeric',timeZone:'UTC'}),rem=i=>i.amount-paidOf(i),
  who=i=>[...new Set((i.payments||[]).filter(p=>p.status=='approved').map(p=>p.pc?.full_name).filter(Boolean))].join('، ');
@@ -21,6 +21,10 @@ const FL=()=>$('#m').value=='pay'?FLP:FLI;
 function flds(){$('#f').innerHTML=Object.keys(FL()).map(k=>`<label><input type="checkbox" value="${k}" checked>${k}</label>`).join('')}flds();
 api('suppliers?order=name').then(s=>{s.forEach(x=>SM[x.name+' ('+x.code+')']=x.id);$('#dl').innerHTML=Object.keys(SM).map(k=>`<option value="${k}">`).join('')});
 function rng(n){const d=new Date();$('#d2').valueAsDate=d;d.setDate(d.getDate()-n);$('#d1').valueAsDate=d}
+const fdu=d=>d.toLocaleDateString('ar-EG',{timeZone:'UTC'});
+function grouped(list,L,foot){const N=F.length,g={};list.forEach(x=>{(g[x.created_at.slice(0,7)]=g[x.created_at.slice(0,7)]||[]).push(x)});
+ return `<table style="margin-top:8px"><tr>${F.map(f=>`<th>${f}</th>`).join('')}</tr>`+Object.keys(g).sort().reverse().map(k=>{const [y,m]=k.split('-').map(Number),s=new Date(Date.UTC(y,m-1,1)),e=new Date(Date.UTC(y,m,0));
+ return `<tr><td colspan="${N}" style="background:#17313b;color:#fff"><b>${mn(s)}</b> — بداية الشهر: ${fdu(s)} • ${g[k].length} سجل</td></tr>`+g[k].map(x=>`<tr>${F.map(f=>`<td>${L[f](x)}</td>`).join('')}</tr>`).join('')+`<tr><td colspan="${N}" style="background:#e8f1f0"><b>نهاية الشهر: ${fdu(e)}</b> • ${foot(g[k])}</td></tr>`}).join('')+'</table>'}
 async function run(){try{const sv=$('#s').value.trim(),sid=sv?SM[sv]:'';if(sv&&!sid)return msg('اختر المورد من القائمة',1);MODE=$('#m').value;const ty=$('#ty').value,a=$('#d1').value,b=$('#d2').value;
  F=[...document.querySelectorAll('#f input:checked')].map(x=>x.value);if(!F.length)return msg('اختر حقلًا واحدًا على الأقل',1);
  let t,h,stats,body;const nm=sid?sv:'كل الموردين';
@@ -28,14 +32,14 @@ async function run(){try{const sv=$('#s').value.trim(),sid=sv?SM[sv]:'';if(sv&&!
   if(sid)q+='&invoices.supplier_id=eq.'+sid;if(ty)q+='&invoices.type=eq.'+ty;if(a)q+='&created_at=gte.'+a+'T00:00:00Z';if(b)q+='&created_at=lte.'+b+'T23:59:59Z';
   R=(await api(q)).sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));const pay=R.filter(r=>r.invoices.type!='income').reduce((s,r)=>s+ +r.amount,0),inc=R.filter(r=>r.invoices.type=='income').reduce((s,r)=>s+ +r.amount,0);
   t='كشف حساب '+nm;stats=[['إجمالي المدفوع',pay],['إجمالي الإيراد',inc]];
-  body=`<table style="margin-top:8px"><tr>${F.map(f=>`<th>${f}</th>`).join('')}</tr>${R.map(r=>`<tr>${F.map(f=>`<td>${FLP[f](r)}</td>`).join('')}</tr>`).join('')}</table>`}
+  body=grouped(R,FLP,a=>`المدفوع: ${money(a.filter(r=>r.invoices.type!='income').reduce((s,r)=>s+ +r.amount,0))} • الإيراد: ${money(a.filter(r=>r.invoices.type=='income').reduce((s,r)=>s+ +r.amount,0))}`)}
  else{let q='invoices?select=*,suppliers(name,code),contracts(title),cr:users!invoices_created_by_fkey(full_name),payments(amount,status,pc:users!payments_created_by_fkey(full_name))&order=created_at.desc';
   if(sid)q+='&supplier_id=eq.'+sid;if(ty)q+='&type=eq.'+ty;else if(MODE!='all')q+='&type=neq.income';if(a)q+='&created_at=gte.'+a+'T00:00:00Z';if(b)q+='&created_at=lte.'+b+'T23:59:59Z';
   R=(await api(q)).filter(i=>MODE=='part'?rem(i)>0.001:MODE=='none'?paidOf(i)==0:true).sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));
   t=({part:'الفواتير التي بها باقٍ',none:'الفواتير التي لم يُدفع منها شيء',all:'كل الفواتير'})[MODE]+' — '+nm;
   stats=[['إجمالي الفواتير',R.reduce((s,i)=>s+ +i.amount,0)],['إجمالي المدفوع',R.reduce((s,i)=>s+paidOf(i),0)],['إجمالي المتبقي',R.reduce((s,i)=>s+rem(i),0)]];
   const g={};R.forEach(i=>{const k=i.created_at.slice(0,7);(g[k]=g[k]||[]).push(i)});
-  body=`<table style="margin-top:8px"><tr>${F.map(f=>`<th>${f}</th>`).join('')}</tr>${Object.keys(g).sort().reverse().map(k=>`<tr><td colspan="${F.length}" style="background:#17313b;color:#fff"><b>${mn(g[k][0].created_at)}</b> — ${g[k].length} فاتورة • المتبقي: ${money(g[k].reduce((s,i)=>s+rem(i),0))}</td></tr>`+g[k].map(i=>`<tr>${F.map(f=>`<td>${FLI[f](i)}</td>`).join('')}</tr>`).join('')).join('')}</table>`}
+  body=grouped(R,FLI,a=>`مبلغ الفواتير: ${money(a.reduce((s,i)=>s+ +i.amount,0))} • المتبقي: ${money(a.reduce((s,i)=>s+rem(i),0))}`)}
  $('#sheet').innerHTML=`<div class="sh"><img src="assets/logo.png" alt=""><div><b>${t}</b><br><small>${a||'البداية'} → ${b||'اليوم'} • أعدّه: ${U.full_name}</small></div></div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0">${stats.map(([k,v])=>`<div class="stat"><small>${k}</small><b>${money(v)}</b></div>`).join('')}</div><small>عدد السجلات: ${R.length} (الأحدث أولًا)</small>${body}`;
  $('#out').className=''}catch(e){msg(errT(e),1)}}

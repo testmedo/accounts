@@ -1,20 +1,24 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>التعديل والحذف</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=11">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=12">
 <style>.ov{position:fixed;inset:0;background:#0009;display:flex;align-items:flex-end;justify-content:center;z-index:20}.ov.hide{display:none}
 .md{background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px;max-height:92vh;overflow:auto}@media(min-width:700px){.ov{align-items:center}.md{border-radius:20px}}
 .md h2{display:flex;justify-content:space-between}.md h2 button{border:0;background:none;font-size:1.6rem;cursor:pointer;color:#4a5f66}
 .ck{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.9rem}.ck input{width:auto}</style></head><body>
 <main><div id="msg" class="hide"></div>
-<div class="card"><label>المورد / المقاول</label><select id="s" onchange="load()"><option value="">كل الموردين (آخر 300 فاتورة)</option></select>
-<label>بحث بكود الفاتورة أو التعاقد</label><input id="q" oninput="draw()"></div><div id="l"></div></main>
+<div class="card"><label>المورد (اكتب اسمه أو كوده أو اخترْه من القائمة)</label><input id="s" list="dl" oninput="sch()" autocomplete="off" placeholder="ابحث عن المورد..."><datalist id="dl"></datalist><label>كود الفاتورة (بحث في كل الفواتير)</label><input id="q" oninput="sch()" placeholder="اكتب الكود أو جزءًا منه"><small id="cn"></small></div><div id="l"></div></main>
 
 <div id="ov" class="ov hide"><div class="md"><h2><span id="mt"></span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div>
 <div class="grid"><button class="b" id="ms">حفظ التعديلات</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
-<script src="js/app.js?v=11"></script><script>
+<script src="js/app.js?v=12"></script><script>
 guard(['admin']);let I=[];const ST={pending:'معلق',approved:'معتمد',rejected:'مرفوض'},iso=d=>new Date(d).toISOString().slice(0,10),tz=v=>v+' 09:00:00+00';
-api('suppliers?order=name').then(s=>$('#s').innerHTML+=s.map(x=>`<option value="${x.id}">${x.name} (${x.code})</option>`).join(''));
-async function load(){const sid=$('#s').value;I=await api('invoices?select=*,suppliers(name),contracts(title),payments(id,amount,status,created_at)&order=created_at.desc'+(sid?'&supplier_id=eq.'+sid:'&limit=300'));draw()}
-function draw(){const q=$('#q').value.trim().toLowerCase();$('#l').innerHTML=I.filter(i=>!q||((i.code||'')+i.contracts.title).toLowerCase().includes(q)).map(i=>`<details class="card"><summary><b>${i.suppliers.name}</b> <small>${i.contracts.title} • ${i.code||''} • ${money(i.amount)} • ${fdate(i.created_at)}</small></summary>
+let SA=[],SM={},tm;api('suppliers?select=id,name,code&order=name').then(s=>{SA=s;s.forEach(x=>SM[x.name+' ('+x.code+')']=x.id);$('#dl').innerHTML=Object.keys(SM).map(k=>`<option value="${k}">`).join('')});
+const TN={pay:'مدفوع إلى',income:'إيداع من',bill:'فاتورة'};function sch(){clearTimeout(tm);tm=setTimeout(load,350)}
+async function load(){try{const sv=$('#s').value.trim(),qc=$('#q').value.trim();let f='';
+ if(sv){const ids=SM[sv]?[SM[sv]]:SA.filter(s=>nz(s.name+' '+s.code).includes(nz(sv))).map(s=>s.id);if(!ids.length){I=[];$('#cn').textContent='لا يوجد مورد بهذا الاسم';return draw()}f+='&supplier_id=in.('+ids.join(',')+')'}
+ if(qc)f+='&code=ilike.*'+encodeURIComponent(qc)+'*';
+ I=await api('invoices?select=*,suppliers(name),contracts(title),payments(id,amount,status,created_at)&order=created_at.desc'+f+((sv||qc)?'':'&limit=300'));
+ $('#cn').textContent=(sv||qc)?I.length+' فاتورة':'يعرض آخر 300 فاتورة — اختر مورّدًا أو اكتب كود الفاتورة للبحث في كل الفواتير';draw()}catch(e){msg(errT(e),1)}}
+function draw(){$('#l').innerHTML=I.map(i=>`<details class="card"><summary><b>${i.suppliers.name}</b> <small>${TN[i.type]||''} • ${i.contracts.title} • ${i.code||''} • ${money(i.amount)} • ${fdate(i.created_at)}</small></summary>
 <small>${i.description||''}</small><div style="display:flex;gap:8px;margin:8px 0"><button class="b s" onclick="oi('${i.id}')">تعديل الفاتورة</button><button class="b s r" onclick="del('invoices','${i.id}')">حذف الفاتورة</button></div>
 ${(i.payments||[]).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(p=>`<div class="row"><div>${money(p.amount)}<small>${ST[p.status]} • ${fdate(p.created_at)}</small></div><div style="display:flex;gap:6px"><button class="b s" onclick="op('${i.id}','${p.id}')">تعديل</button><button class="b s r" onclick="del('payments','${p.id}')">حذف</button></div></div>`).join('')}</details>`).join('')||'<div class="msg">لا توجد فواتير</div>'}
 const cl=()=>$('#ov').className='ov hide';
