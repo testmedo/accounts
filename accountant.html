@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>المحاسبة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=12">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=13">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div id="home" class="cards"></div>
@@ -21,18 +21,18 @@
 
 <section id="open" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>فواتير بها مبالغ متبقية</h2><div id="olist"></div></div></section>
 <section id="edit" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>فواتير لم تُعتمد بعد (قابلة للتعديل)</h2><div id="elist"></div></div></section>
-<section id="imp" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>رفع معاملات من Excel</h2><small>الأعمدة: كود المورد | الاسم | الهاتف | المجال | العقد | كود الفاتورة | النوع (pay أو income أو bill — أو: مدفوع إلى / إيداع من / فاتورة) | المبلغ | المدفوع | البيان | التاريخ (بأي صيغة). أنواع مدفوع إلى / إيداع من تُسجَّل مباشرة. نوع فاتورة مورد يُسجَّل غير مدفوع، وإن كُتب مبلغ في عمود المدفوع ينتظر اعتماد مدير الحسابات. الفواتير المكررة لا تُرفع.</small>
-<button class="b g" style="margin-bottom:8px" onclick="tpl()">تحميل النموذج</button><input id="f" type="file" accept=".xlsx,.xls"><button class="b" onclick="importXlsx($('#f').files[0],U,'pending')">رفع واستيراد</button></div><div id="res"></div></section>
+<section id="imp" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>رفع معاملات من Excel</h2><small>يدعم الملف: (١) «كشف حساب المورد» كما يصدر من النظام، (٢) «مدفوعات وإيرادات الموظف»، (٣) النموذج المخصص أدناه. تُقرأ التواريخ بأي صيغة. مدفوعات = مدفوع إلى، إيداعات = إيراد من، فاتورة مورد = فاتورة (تبقى غير مدفوعة حتى اعتماد الدفع أو الحذف). تظهر مراجعة قبل الحفظ، والمكرر لا يُرفع.</small>
+<button class="b g" style="margin-bottom:8px" onclick="tpl()">تحميل النموذج المخصص (اختياري)</button><input id="f" type="file" accept=".xlsx,.xls"><button class="b" onclick="importXlsx($('#f').files[0],U,'pending')">رفع واستيراد</button></div><div id="res"></div></section>
 <section id="list" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><input id="lq" placeholder="ابحث باسم المورد أو كوده" oninput="draw()"></div><div id="llist"></div></section>
 </main>
 <datalist id="dls"></datalist><datalist id="dlc"></datalist>
 <div id="ov" class="ov hide"><div class="md"><h2><span id="mt">تعديل الفاتورة</span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div><div class="grid"><button class="b" id="ms">حفظ التعديلات</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
-<script src="js/app.js?v=12"></script><script src="js/importer.js?v=12"></script><script>
+<script src="js/app.js?v=13"></script><script src="js/importer.js?v=13"></script><script>
 const U=guard(['accountant','manager','admin']);let S=[],C=[],I=[],SM={},CM={};
 const iso=d=>new Date(d).toISOString().slice(0,10),tz=v=>v+' 09:00:00+00',cl=()=>$('#ov').className='ov hide',noApp=i=>!(i.payments||[]).some(p=>p.status=='approved');
 const who=i=>{const n=[...new Set((i.payments||[]).filter(p=>p.status=='approved').map(p=>p.pc?.full_name).filter(Boolean))];return `<small>التاريخ: ${fdate(i.created_at)} • أنشأها: ${i.cr?.full_name||'—'}</small>${n.length?`<small>دفعها: ${n.join('، ')}</small>`:''}`};
 function go(id){['home','sup','con','inv','open','edit','imp','list'].forEach(x=>$('#'+x).classList.toggle('hide',x!=(id||'home')));$('#msg').className='hide';scrollTo(0,0)}
-async function load(){[S,C,I]=await Promise.all([api('suppliers?order=name'),api('contracts?select=*&order=created_at.desc'),api('invoices?select=*,suppliers(name),contracts(title),cr:users!invoices_created_by_fkey(full_name),payments(id,amount,note,status,pc:users!payments_created_by_fkey(full_name))&order=created_at.desc')]);
+async function load(){[S,C,I]=await Promise.all([apiAll('suppliers?order=name'),apiAll('contracts?select=*&order=created_at.desc'),apiAll('invoices?select=*,suppliers(name),contracts(title),cr:users!invoices_created_by_fkey(full_name),payments(id,amount,note,status,pc:users!payments_created_by_fkey(full_name))&order=created_at.desc')]);
  SM={};S.forEach(s=>SM[s.name+' ('+s.code+')']=s.id);CM={};C.forEach(c=>CM[(S.find(s=>s.id==c.supplier_id)?.name||'')+' — '+c.title]=c.id);
  $("#dls").innerHTML=Object.keys(SM).map(k=>`<option value="${k}">`).join('');$("#dlc").innerHTML=Object.keys(CM).map(k=>`<option value="${k}">`).join('');
  const o=I.filter(i=>i.amount-paidOf(i)>0.001);$('#olist').innerHTML=months(o,i=>i.created_at,i=>{const av=i.amount-paidOf(i)-pendOf(i);return `<div class="row"><div><span class="t">${i.suppliers.name}</span><small>${i.contracts.title} • ${i.code||''}</small>${who(i)}<small>المتبقي ${money(i.amount-paidOf(i))}${pendOf(i)?' • قيد الاعتماد '+money(pendOf(i)):''}</small></div>${av>0.001?`<button class="b s" onclick="pm('${i.id}')">دفع</button>`:'<small>بانتظار الاعتماد</small>'}</div>`},i=>i.amount-paidOf(i))||'<small>لا يوجد متبقٍ</small>';

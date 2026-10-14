@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>التقارير</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=12">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=13">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div class="card noprint"><h2>التقارير وكشف الحساب</h2>
@@ -11,7 +11,7 @@
 <label>الحقول المراد إظهارها</label><div class="chk" id="f"></div>
 <button class="b" onclick="run()">عرض التقرير</button></div>
 <div id="out" class="hide"><div class="noprint" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"><button class="b g s" onclick="dlPdf()">تحميل PDF</button><button class="b s" onclick="xl()">تحميل Excel</button><button class="b s" style="background:#4a5f66" onclick="pr()">طباعة</button></div><div class="sheet" id="sheet"></div><small class="noprint">يُنشأ ملف PDF حقيقي بكل الأعمدة والصفوف دون اقتطاع.</small></div></main>
-<script src="js/app.js?v=12"></script><script>
+<script src="js/app.js?v=13"></script><script>
 const U=guard(['accountant','manager','admin']);let R=[],F=[],SM={},MODE='pay';
 const TN={pay:'مدفوع إلى',income:'إيداع من',bill:'فاتورة'},mn=d=>new Date(d).toLocaleDateString('ar-EG',{month:'long',year:'numeric',timeZone:'UTC'}),rem=i=>i.amount-paidOf(i),
  who=i=>[...new Set((i.payments||[]).filter(p=>p.status=='approved').map(p=>p.pc?.full_name).filter(Boolean))].join('، ');
