@@ -1,0 +1,89 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الخزينة</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=20"></head><body>
+<main><div id="msg" class="hide"></div><div id="live" class="live hide"></div>
+<div id="home" class="cards"></div>
+
+<section id="p1" class="hide"><button class="back" onclick="tab(0)">→ رجوع للتبويبات</button>
+<div class="card frm"><h2>المستحقات</h2><input id="q" placeholder="ابحث باسم المورد أو كوده أو كود الفاتورة" oninput="draw()">
+<div class="legend"><span class="kbadge k-collect">تحصيل</span><span class="kbadge k-deposit">إيداع</span><span class="kbadge k-pay">دفع / صرف</span></div>
+<div class="tabs" id="fl" style="margin:0"><button data-v="all" class="on">الكل</button><button data-v="collect">التحصيل</button><button data-v="pay">الصرف</button></div><small id="upd" style="display:block;margin-top:6px"></small></div>
+<div id="stat"></div><div id="list"></div></section>
+
+<section id="p2" class="hide"><button class="back" onclick="tab(0)">→ رجوع للتبويبات</button>
+<div class="card frm"><h2>قيد جديد مباشر</h2><small>يُنفَّذ فورًا دون اعتماد، وتتحمل مسؤوليته باسمك.</small>
+<label>نوع القيد</label><select id="rk" onchange="setCode()"><option value="in">إيداع / إيراد (استلام مبلغ)</option><option value="out">دفع / مصروف (صرف مبلغ)</option></select>
+<label>العقد الرئيسي (اكتب للبحث باسم المورد أو العقد)</label><input id="rc" list="dlc" autocomplete="off" placeholder="ابحث..."><label>كود الفاتورة / الإيصال</label><input id="rcode" oninput="this.dataset.auto=''"><small>يُقترح كود تلقائي (D للإيداع • E للصرف) ويمكنك تعديله</small><label>المبلغ</label><input id="ram" type="number" inputmode="decimal"><label>التاريخ</label><input id="rdt" type="date"><label>البيان</label><textarea id="rds" rows="2"></textarea><button class="b" onclick="addEntry()">تنفيذ القيد</button></div></section>
+
+<section id="p3" class="hide"><button class="back" onclick="tab(0)">→ رجوع للتبويبات</button><div id="rec"></div></section></main>
+<datalist id="dlc"></datalist>
+<div id="ov" class="ov hide"><div class="md"><h2><span id="mt"></span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div><div class="grid"><button class="b" id="ms">تأكيد</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
+<script src="js/app.js?v=20"></script><script>
+const U=guard(['treasury','manager','admin']);
+let INV=[],CM={},SP={},REC=[],TAB=0,FIL='all',PREV=null,MINE=new Map(),busy=false,pend=false,lt;
+const Q='invoices?select=*,suppliers(name,code,phone),contracts(title,late_rate,grace_day,late_fee),contract_months(month),cr:users!invoices_created_by_fkey(full_name,role),payments(id,amount,status,created_at,fee)&dest=eq.treasury&order=created_at.desc';
+const isMine=id=>Date.now()-(MINE.get(id)||0)<20000,cl=()=>$('#ov').className='ov hide',rem=i=>rnd(i.amount-paidOf(i)),isIn=i=>i.type=='income',mon=i=>i.contract_months?.month||i.created_at.slice(0,7)+'-01';
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const sumR=l=>l.reduce((s,x)=>s+rem(x),0);
+function flash(t){const l=$('#live');l.textContent=t;l.className='live';clearTimeout(lt);lt=setTimeout(()=>l.className='live hide',7000)}
+function showM(t,h,l,fn){$('#mt').textContent=t;$('#mb').innerHTML=h;$('#ms').textContent=l;$('#me').className='msg e hide';$('#ms').onclick=async()=>{try{await fn();cl()}catch(e){$('#me').textContent=errT(e).replace(/^خطأ: /,'');$('#me').className='msg e'}};$('#ov').className='ov'}
+// ---------- التبويبات: صفحة رئيسية ببطاقات، وكل تبويب يفتح وحده مع زر رجوع ----------
+function homeDraw(){const o=INV.filter(i=>rem(i)>0.001),inc=o.filter(isIn).length,out=o.length-inc;
+ $('#home').innerHTML=card('wallet','المستحقات',PREV?`${inc} للتحصيل • ${out} للصرف`:'جارٍ التحميل…',"tab(1)")+card('receipt','قيد جديد','إيداع أو صرف مباشر دون اعتماد',"tab(2)")+card('list','آخر العمليات','آخر 100 عملية منفَّذة مع طباعة الإيصال',"tab(3)")}
+function setCode(f){return fillCode($('#rcode'),$('#rk').value=='out'?'E':'D',f)}
+function tab(n){if(n==2)setCode();TAB=n;[1,2,3].forEach(x=>$('#p'+x).classList.toggle('hide',x!=n));$('#home').classList.toggle('hide',n!=0);$('#msg').className='hide';scrollTo(0,0);if(n==3)loadRec();if(n==0)homeDraw()}
+document.querySelectorAll('#fl button').forEach(b=>b.onclick=()=>{FIL=b.dataset.v;document.querySelectorAll('#fl button').forEach(x=>x.classList.toggle('on',x==b));draw()});
+// ---------- تحميل مباشر (يتجدد تلقائيًا لتظهر عمليات بقية شاشات الخزينة فورًا) ----------
+async function load(){if(busy){pend=true;return}busy=true;try{const inv=await apiAll(Q),cur=new Map(inv.map(i=>[i.id,rem(i)]));
+  if(PREV){const nw=inv.filter(i=>!PREV.has(i.id)&&rem(i)>0.001&&!isMine(i.id)),done=[...PREV].filter(([id,r])=>r>0.001&&(cur.get(id)??0)<=0.001&&!isMine(id)),chg=inv.filter(i=>PREV.has(i.id)&&PREV.get(i.id)>0.001&&cur.get(i.id)>0.001&&Math.abs(PREV.get(i.id)-cur.get(i.id))>0.004&&!isMine(i.id));
+   const m=[];if(nw.length)m.push(`وصلت ${nw.length} فاتورة جديدة`);if(done.length)m.push(`تم تنفيذ أو حذف ${done.length} فاتورة من شاشة أخرى`);if(chg.length)m.push(`تم تحصيل/صرف جزء من ${chg.length} فاتورة من شاشة أخرى`);if(m.length)flash(m.join(' • '))}
+  PREV=cur;INV=inv;draw();if(TAB==0)homeDraw();$('#upd').textContent='آخر تحديث '+new Date().toLocaleTimeString('ar-EG')+' • متزامن تلقائيًا مع بقية شاشات الخزينة'}catch(e){$('#upd').textContent='تعذر التحديث: '+e.message.slice(0,60)}finally{busy=false;if(pend){pend=false;load()}}}
+function refresh(){if(document.hidden)return;load();if(TAB==3)loadRec()}
+setInterval(refresh,5000);document.addEventListener('visibilitychange',refresh);
+function row(i){const k=isIn(i)?'collect':'pay',li=isIn(i)?lateInfo(i,mon(i),i.contracts,today()):null,ph=i.suppliers.phone;
+ return `<div class="krow k-${k}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><span class="kbadge">${KN[k]}</span><b style="font-size:1.15rem;display:block;margin-top:4px">${esc(i.suppliers.name)}</b>${ph?`<a href="tel:${esc(ph)}" style="font-size:.85rem">${esc(ph)}</a>`:''}</div>
+<div style="text-align:end"><div class="kamt">${money(rem(i))}</div><small>${k=='collect'?'المطلوب تحصيله':'المطلوب صرفه'}${paidOf(i)>0?' • سبق '+(isIn(i)?'تحصيل ':'صرف ')+money(paidOf(i)):''} • من ${money(i.amount)}</small></div></div>
+<div style="margin-top:8px"><b>البيان:</b> ${esc(i.description)||'<span style="color:#4a5f66">— بلا بيان —</span>'}</div>
+<small style="display:block;margin-top:4px">${esc(i.contracts.title)} • فاتورة ${esc(i.code)} • ${fdu(i.created_at)} • أنشأها: <b>${esc(i.cr?.full_name)||'—'}</b></small>
+${li&&!li.off?(li.days>0?`<small style="display:block;color:#b3341f">متأخرة ${li.days} يوم — غرامة متوقعة اليوم ${money(li.fee)}</small>`:`<small style="display:block;color:#237a4b">ضمن فترة السماح حتى ${fdu(li.deadline)}</small>`):''}
+<div style="display:flex;gap:8px;margin-top:10px"><button class="b s" onclick="col('${i.id}')">${isIn(i)?'تحصيل':'صرف'}</button>${paidOf(i)>0?'':`<button class="b s r" onclick="delT('${i.id}')">حذف</button>`}</div></div>`}
+function draw(){const q=nz($('#q').value),o=INV.filter(i=>rem(i)>0.001&&(FIL=='all'||(FIL=='collect')==isIn(i))&&(!q||nz(i.suppliers.name+' '+i.suppliers.code+' '+(i.code||'')).includes(q)));
+ const inc=o.filter(isIn),out=o.filter(i=>!isIn(i)),fees=inc.reduce((s,i)=>s+lateInfo(i,mon(i),i.contracts,today()).fee,0);
+ $('#stat').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px"><div class="stat"><small>إجمالي الإيراد المستحق (${inc.length})</small><b style="color:#237a4b">${money(sumR(inc))}</b></div><div class="stat"><small>إجمالي المصروف المستحق (${out.length})</small><b style="color:#b3341f">${money(sumR(out))}</b></div>${fees>0?`<div class="stat"><small>غرامات تأخير متوقعة</small><b>${money(fees)}</b></div>`:''}</div>`;
+ $('#list').innerHTML=months(o,i=>mon(i)+'T00:00:00Z',row,rem,a=>`إجمالي الإيراد: <b>${money(sumR(a.filter(isIn)))}</b> • إجمالي المصروف: <b>${money(sumR(a.filter(x=>!isIn(x))))}</b>`)||'<div class="msg">لا توجد فواتير بانتظار التنفيذ</div>'}
+// ---------- التحصيل / الصرف ----------
+function col(id){const i=INV.find(x=>x.id==id);if(!i)return;const w=isIn(i)?'تحصيل':'صرف';
+ showM(w+' — '+i.suppliers.name,`<div class="krow k-${isIn(i)?'collect':'pay'}" style="margin-top:0"><b>${esc(i.description)||'بلا بيان'}</b><small style="display:block">${esc(i.contracts.title)} • فاتورة ${esc(i.code)} • المتبقي ${money(rem(i))}</small></div><label>تاريخ ال${w}</label><input id="c1" type="date" value="${today()}" max="${today()}" oninput="prv('${id}')"><label>المبلغ (من أصل الفاتورة)</label><input id="c2" type="number" inputmode="decimal" value="${rem(i)}" oninput="prv('${id}')"><label>بيان (اختياري)</label><input id="c3"><div id="c4" class="msg" style="margin-top:10px"></div>`,'تأكيد ال'+w,async()=>{
+  const f=(await api('invoices?id=eq.'+id+'&select=*,contracts(late_rate,grace_day,late_fee),contract_months(month),payments(amount,status,created_at)'))[0];if(!f)throw Error('هذه الفاتورة لم تعد موجودة (حُذفت من شاشة أخرى)');
+  const d=$('#c1').value,a=+$('#c2').value;if(!d)throw Error('اختر التاريخ');if(d>today())throw Error('لا يمكن التنفيذ بتاريخ مستقبلي');const r=rnd(f.amount-paidOf(f));if(!(r>0.001))throw Error('هذه الفاتورة نُفِّذت بالكامل من شاشة أخرى');if(!(a>0)||a>r+0.001)throw Error('المبلغ غير صالح أو أكبر من المتبقي ('+r+')');
+  const lp=(f.payments||[]).filter(p=>p.status=='approved').map(p=>p.created_at.slice(0,10)).sort().pop();if(lp&&d<lp)throw Error('التاريخ قبل آخر عملية على هذه الفاتورة ('+lp+')');
+  const li=f.type=='income'?lateInfo(f,mon(f),f.contracts,d):{fee:0,note:''},nt=$('#c3').value.trim();MINE.set(id,Date.now());
+  await api('payments','POST',{invoice_id:id,amount:a,fee:li.fee,fee_note:li.note||null,note:nt||null,status:'approved',created_by:U.id,approved_by:U.id,created_at:ts(d),decided_at:ts(d)});
+  await load();msg(`تم ${f.type=='income'?'تحصيل':'صرف'} ${money(a)}${li.fee>0?' + غرامة تأخير '+money(li.fee):''} باسم ${U.full_name}`);
+  const inc=f.type=='income',rows=[[inc?'المبلغ المحصَّل الآن':'المبلغ المصروف الآن',money(a)],['تاريخ التنفيذ',fdu(d)]];if(li.fee>0)rows.push(['غرامة تأخير',money(li.fee)]);if(inc)rows.push(['الإجمالي المستلم',money(a+li.fee)]);if(nt)rows.push(['بيان',nt]);rows.push(['المتبقي بعد العملية',money(Math.max(0,r-a))]);
+  setTimeout(()=>showReceipt({kind:inc?'income':'pay',supplier:i.suppliers.name+' ('+i.suppliers.code+')',contract:i.contracts.title,month:mlabel(mon(i)),typeLabel:inc?'إيداع من':'مدفوع إلى',destLabel:'الخزينة',code:i.code,date:fdu(i.created_at),amount:money(i.amount),desc:i.description,image:i.image_url,rows,done:true,banner:'تمت العملية — يمكنك طباعة الإيصال'}),50)});prv(id)}
+function prv(id){const i=INV.find(x=>x.id==id),d=$('#c1')&&$('#c1').value,a=+($('#c2')&&$('#c2').value)||0;if(!i||!d)return;
+ if(!isIn(i)){$('#c4').innerHTML=`المبلغ المطلوب صرفه: <b>${money(a)}</b> — يُنفَّذ فورًا دون اعتماد باسمك.`;return}
+ const li=lateInfo(i,mon(i),i.contracts,d);if(li.off){$('#c4').innerHTML=`لا تُطبَّق غرامة تأخير على هذا العقد.<br>الإجمالي المطلوب استلامه: <b>${money(a)}</b>`;return}
+ $('#c4').innerHTML=li.days>0?`<b>غرامة تأخير تُضاف عند السداد</b><br>${li.rate}% شهريًا على المتبقي ${money(li.bal)} من ${fdu(li.from)} إلى ${fdu(li.to)} (${li.days} يوم) = <b>${money(li.fee)}</b><br>الإجمالي المطلوب استلامه: <b>${money(a+li.fee)}</b>`:`ضمن فترة السماح (حتى ${fdu(li.deadline)}) — لا توجد غرامة.<br>الإجمالي المطلوب استلامه: <b>${money(a)}</b>`}
+// ---------- حذف فاتورة (فقط إذا لم يُنفَّذ منها شيء) ----------
+async function delT(id){const i=INV.find(x=>x.id==id);if(!i)return;if(!confirm('حذف هذه الفاتورة نهائيًا من الخزينة؟\n'+i.suppliers.name+' • فاتورة '+i.code+' • '+money(i.amount)))return;
+ try{const f=await api('payments?invoice_id=eq.'+id+'&select=status');if(f.some(p=>p.status=='approved'))return msg('لا يمكن الحذف: تم تحصيل/صرف جزء من هذه الفاتورة',1);
+  MINE.set(id,Date.now());const r=await api('invoices?id=eq.'+id,'DELETE');if(!r.length)return msg('لم يتم الحذف',1);
+  await audit('حذف فاتورة (خزينة)','invoices',id,i.contract_id,{'الكود':i.code,'المبلغ':i.amount,'التاريخ':i.created_at.slice(0,10),'البيان':i.description},null);await load();msg('تم حذف الفاتورة باسم '+U.full_name)}catch(e){msg(errT(e),1)}}
+// ---------- قيد مباشر ----------
+async function addEntry(){try{if($('#rcode').dataset.auto=='1')await setCode(true);const c=CM[$('#rc').value];if(!c)return msg('اختر العقد من القائمة',1);const out=$('#rk').value=='out',code=$('#rcode').value.trim(),a=+$('#ram').value,d=$('#rdt').value,ds=$('#rds').value.trim();if(!code)return msg('أدخل كود الفاتورة/الإيصال',1);if(!(a>0))return msg('أدخل المبلغ',1);if(!d)return msg('اختر التاريخ',1);if(d>today())return msg('لا يمكن التسجيل بتاريخ مستقبلي',1);
+ const ex=await api('invoices?select=id&code=ilike.'+encodeURIComponent(code.replace(/[*%,()]/g,'')));if(ex.length)return msg('كود الفاتورة مسجل من قبل ولا يمكن تكراره',1);
+ const mid=await ensureMonth(c.id,d,U.id),iv=(await api('invoices','POST',{contract_id:c.id,supplier_id:c.supplier_id,month_id:mid,dest:'treasury',type:out?'pay':'income',code,amount:a,description:ds,created_by:U.id,created_at:ts(d)}))[0];MINE.set(iv.id,Date.now());
+ try{await api('payments','POST',{invoice_id:iv.id,amount:a,status:'approved',created_by:U.id,approved_by:U.id,created_at:ts(d),decided_at:ts(d)})}catch(e){try{await api('invoices?id=eq.'+iv.id,'DELETE')}catch(_){}throw e}
+ const sp=SP[c.supplier_id]||{};['rc','rcode','ram','rds'].forEach(x=>$('#'+x).value='');$('#rcode').dataset.auto='';tab(0);load();msg(`تم ${out?'صرف':'تسجيل إيراد'} ${money(a)} باسم ${U.full_name}`);
+ showReceipt({kind:out?'pay':'income',supplier:(sp.name||'')+(sp.code?' ('+sp.code+')':''),contract:c.title,month:mlabel(d),typeLabel:out?'مدفوع إلى':'إيداع من',destLabel:'الخزينة',code,date:fdu(d),amount:money(a),desc:ds,image:null,rows:[[out?'المبلغ المصروف':'المبلغ المحصَّل',money(a)],['تاريخ التنفيذ',fdu(d)]],done:true,banner:'تم تنفيذ القيد — يمكنك طباعة الإيصال'})}catch(e){msg(errT(e),1)}}
+// ---------- آخر العمليات ----------
+async function loadRec(){try{const p=await api('payments?status=eq.approved&invoices.dest=eq.treasury&select=amount,fee,note,created_at,invoices!inner(type,code,description,amount,image_url,created_at,suppliers(name,code),contracts(title),cr:users!invoices_created_by_fkey(full_name,role)),ex:users!payments_created_by_fkey(full_name)&order=created_at.desc&limit=100');REC=p;
+ const ti=p.filter(x=>x.invoices.type=='income').reduce((s,x)=>s+ +x.amount+ +x.fee,0),to=p.filter(x=>x.invoices.type!='income').reduce((s,x)=>s+ +x.amount,0);
+ $('#rec').innerHTML=`<div class="card frm"><h2>آخر ${p.length} عملية</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="stat"><small>إجمالي الإيراد</small><b style="color:#237a4b">${money(ti)}</b></div><div class="stat"><small>إجمالي المصروف</small><b style="color:#b3341f">${money(to)}</b></div></div><div class="legend" style="margin-top:10px"><span class="kbadge k-collect">تحصيل</span><span class="kbadge k-deposit">إيداع</span><span class="kbadge k-pay">دفع / صرف</span></div>`+(p.map((x,n)=>{const k=kindOf(x.invoices),out=k=='pay';return `<div class="krow k-${k}"><div style="display:flex;justify-content:space-between;gap:10px"><div><span class="kbadge">${KN[k]}</span><b style="display:block;font-size:1.1rem;margin-top:4px">${esc(x.invoices.suppliers.name)}</b></div><div class="kamt">${out?'−':'+'} ${money(+x.amount+ +x.fee)}</div></div>
+<div style="margin-top:6px"><b>البيان:</b> ${esc(x.invoices.description)||'—'}${x.note?' • '+esc(x.note):''}</div><small style="display:block">${esc(x.invoices.contracts.title)} • فاتورة ${esc(x.invoices.code)} • ${fdu(x.created_at)}</small><small style="display:block">أنشأ الفاتورة: <b>${esc(x.invoices.cr?.full_name)||'—'}</b> • ${out?'صرفها':'حصّلها'}: <b>${esc(x.ex?.full_name)||'—'}</b></small>${+x.fee>0?`<small style="color:#b3341f">منها رسوم تأخير ${money(x.fee)}</small>`:''}<button class="b s g" style="margin-top:8px" onclick="prRec(${n})">طباعة إيصال</button></div>`}).join('')||'<small>لا توجد عمليات</small>')+'</div>'}catch(e){msg(errT(e),1)}}
+function prRec(n){const x=REC[n],v=x.invoices,inc=v.type=='income',rows=[[inc?'المبلغ المحصَّل':'المبلغ المصروف',money(x.amount)],['تاريخ التنفيذ',fdu(x.created_at)]];if(+x.fee>0)rows.push(['غرامة تأخير',money(x.fee)]);if(inc)rows.push(['الإجمالي المستلم',money(+x.amount+ +x.fee)]);if(x.note)rows.push(['بيان',x.note]);if(x.ex&&x.ex.full_name)rows.push([inc?'حصّله':'صرفه',x.ex.full_name]);
+ showReceipt({kind:inc?'income':'pay',supplier:v.suppliers.name+' ('+v.suppliers.code+')',contract:v.contracts.title,month:mlabel(v.created_at),typeLabel:inc?'إيداع من':'مدفوع إلى',destLabel:'الخزينة',code:v.code,date:fdu(v.created_at),amount:money(v.amount),desc:v.description,image:v.image_url,rows,done:true})}
+Promise.all([apiAll('suppliers?select=id,name,code,phone,field&order=name'),apiAll('contracts?select=id,supplier_id,title&order=title')]).then(([s,c])=>{s.forEach(x=>SP[x.id]=x);c.forEach(x=>CM[(SP[x.supplier_id]?.name||'')+' — '+x.title]=x);$('#dlc').innerHTML=Object.keys(CM).map(k=>`<option value="${k}">`).join('')});
+$('#rdt').valueAsDate=new Date();homeDraw();load();
+</script></body></html>

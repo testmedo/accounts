@@ -1,0 +1,13 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>سجل التدقيق</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=16"></head><body>
+<main><div id="msg" class="hide"></div><div class="card"><h2>سجل التدقيق</h2><small>كل تعديل أو حذف أو إنشاء لعقد أو شهر تعاقدي أو فاتورة، باسم من قام به. السجل للقراءة فقط.</small>
+<label>المستخدم</label><select id="u" onchange="load()"><option value="">الكل</option></select><label>العملية (بحث)</label><input id="a" oninput="sch()" placeholder="مثال: تعديل قيمة"><div class="grid"><div><label>من</label><input id="d1" type="date" onchange="load()"></div><div><label>إلى</label><input id="d2" type="date" onchange="load()"></div></div></div><div id="l"></div></main>
+<script src="js/app.js?v=16"></script><script>
+guard(['manager','admin']);let tm,UL=[];
+api('users?select=id,full_name&order=full_name').then(u=>{UL=u;$('#u').innerHTML+=u.map(x=>`<option value="${x.id}">${x.full_name}</option>`).join('')});
+const fo=o=>o?Object.entries(o).map(([k,v])=>`${k}: ${v==null?'—':v}`).join(' | '):'';
+function sch(){clearTimeout(tm);tm=setTimeout(load,350)}
+async function load(){try{let q='audit_log?select=*&order=created_at.desc&limit=300';if($('#u').value)q+='&user_id=eq.'+$('#u').value;const a=$('#a').value.trim();if(a)q+='&action=ilike.*'+encodeURIComponent(a)+'*';if($('#d1').value)q+='&created_at=gte.'+$('#d1').value+'T00:00:00Z';if($('#d2').value)q+='&created_at=lte.'+$('#d2').value+'T23:59:59Z';
+ const r=await api(q);$('#l').innerHTML=`<small>${r.length} سجل (الأحدث أولًا، حتى 300)</small>`+r.map(x=>`<div class="card" style="margin-top:8px"><div class="row" style="border:0;padding:0"><div><span class="t">${x.action}</span><small>${x.user_name||'—'} • ${new Date(x.created_at).toLocaleString('ar-EG')}</small></div></div>${x.old_value?`<small style="display:block;color:#b3341f">قبل: ${fo(x.old_value)}</small>`:''}${x.new_value?`<small style="display:block;color:#237a4b">بعد: ${fo(x.new_value)}</small>`:''}${x.note?`<small style="display:block">${x.note}</small>`:''}</div>`).join('')}catch(e){msg(errT(e),1)}}
+load();
+</script></body></html>
