@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>التقارير</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=17">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=24">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div class="card noprint"><h2>التقارير وكشوف الحساب</h2>
@@ -13,7 +13,7 @@
 <label>الحقول المراد إظهارها (اختر ما تشاء)</label><div style="display:flex;gap:8px;margin-bottom:6px"><button class="b s g" onclick="allf(true)">تحديد الكل</button><button class="b s g" onclick="allf(false)">إلغاء الكل</button></div><div class="chk" id="f"></div>
 <button class="b" onclick="run()">عرض التقرير</button></div>
 <div id="out" class="hide"><div class="noprint" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"><button class="b g s" onclick="dlPdf()">تحميل PDF</button><button class="b s" onclick="xl()">تحميل Excel</button><button class="b s" style="background:#4a5f66" onclick="pr()">طباعة</button></div><div class="sheet" id="sheet"></div><small class="noprint">يُنشأ ملف PDF حقيقي بكل الأعمدة والصفوف دون اقتطاع. الفلاتر لا تظهر في الطباعة.</small></div></main>
-<script src="js/app.js?v=17"></script><script>
+<script src="js/app.js?v=24"></script><script>
 const U=guard(['accountant','manager','admin','treasury']);let R=[],F=[],SM={},CM={},MODE='pay',FILT='';
 const TN={pay:'مدفوع إلى',income:'إيداع من',bill:'فاتورة'},DN={treasury:'الخزينة',accounts:'الحسابات'},mn=d=>new Date(d).toLocaleDateString('ar-EG',{month:'long',year:'numeric',timeZone:'UTC'}),rem=i=>rnd(i.amount-paidOf(i)),
  who=i=>[...new Set((i.payments||[]).filter(p=>p.status=='approved').map(p=>p.pc?.full_name).filter(Boolean))].join('، ');
@@ -44,7 +44,7 @@ async function run(){try{const sv=$('#s').value.trim(),sid=sv?SM[sv]:'',cv=$('#c
    R=Object.values(g).sort((x,y)=>y.created_at<x.created_at?-1:1);t='الإيراد والمصروف اليومي — '+nm;const tr=sm(R,r=>r.rev),tf=sm(R,r=>r.fee),te=sm(R,r=>r.exp);stats=[['إجمالي الإيراد',tr],['رسوم التأخير',tf],['إجمالي المصروف',te]];
    body=grouped(R,FLD,x=>`الإيراد: ${money(sm(x,r=>r.rev))} • الرسوم: ${money(sm(x,r=>r.fee))} • المصروف: ${money(sm(x,r=>r.exp))}`)}}
  else{let q='invoices?select=*,suppliers(name,code,phone),contracts(title,late_rate,grace_day,late_fee),contract_months(month),cr:users!invoices_created_by_fkey(full_name),payments(amount,fee,status,created_at,pc:users!payments_created_by_fkey(full_name))&order=created_at.desc';
-  if(sid)q+='&supplier_id=eq.'+sid;if(cid)q+='&contract_id=eq.'+cid;if(MODE=='owed')q+='&type=eq.income&dest=eq.treasury';else{if(ty)q+='&type=eq.'+ty;else if(MODE!='all')q+='&type=neq.income';if(ds)q+='&dest=eq.'+ds}if(us)q+='&created_by=eq.'+us;if(a)q+='&created_at=gte.'+a+'T00:00:00Z';if(b)q+='&created_at=lte.'+b+'T23:59:59Z';
+  if(sid)q+='&supplier_id=eq.'+sid;if(cid)q+='&contract_id=eq.'+cid;q+='&apv=eq.approved';if(MODE=='owed')q+='&type=eq.income&dest=eq.treasury';else{if(ty)q+='&type=eq.'+ty;else if(MODE!='all')q+='&type=neq.income';if(ds)q+='&dest=eq.'+ds}if(us)q+='&created_by=eq.'+us;if(a)q+='&created_at=gte.'+a+'T00:00:00Z';if(b)q+='&created_at=lte.'+b+'T23:59:59Z';
   const L=await apiAll(q),td=today();
   R=L.filter(i=>MODE=='owed'?rem(i)>0.001:MODE=='part'?rem(i)>0.001:MODE=='none'?paidOf(i)==0:true).sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));
   if(MODE=='owed'){R.forEach(i=>{i._m=i.contract_months?.month||i.created_at.slice(0,7)+'-01';i._li=lateInfo(i,i._m,i.contracts,td)});t='المتبقي تحصيله على الأشخاص — '+nm;stats=[['إجمالي المتبقي',sm(R,rem)],['الغرامات المتوقعة اليوم',sm(R,i=>i._li.fee)],['عدد الأشخاص',new Set(R.map(i=>i.supplier_id)).size]];

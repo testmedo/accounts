@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الخزينة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=20"></head><body>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=24"></head><body>
 <main><div id="msg" class="hide"></div><div id="live" class="live hide"></div>
 <div id="home" class="cards"></div>
 
@@ -17,10 +17,10 @@
 <section id="p3" class="hide"><button class="back" onclick="tab(0)">→ رجوع للتبويبات</button><div id="rec"></div></section></main>
 <datalist id="dlc"></datalist>
 <div id="ov" class="ov hide"><div class="md"><h2><span id="mt"></span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div><div class="grid"><button class="b" id="ms">تأكيد</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
-<script src="js/app.js?v=20"></script><script>
+<script src="js/app.js?v=24"></script><script>
 const U=guard(['treasury','manager','admin']);
 let INV=[],CM={},SP={},REC=[],TAB=0,FIL='all',PREV=null,MINE=new Map(),busy=false,pend=false,lt;
-const Q='invoices?select=*,suppliers(name,code,phone),contracts(title,late_rate,grace_day,late_fee),contract_months(month),cr:users!invoices_created_by_fkey(full_name,role),payments(id,amount,status,created_at,fee)&dest=eq.treasury&order=created_at.desc';
+const Q='invoices?select=*,suppliers(name,code,phone),contracts(title,late_rate,grace_day,late_fee),contract_months(month),cr:users!invoices_created_by_fkey(full_name,role),payments(id,amount,status,created_at,fee)&dest=eq.treasury&apv=eq.approved&order=created_at.desc';
 const isMine=id=>Date.now()-(MINE.get(id)||0)<20000,cl=()=>$('#ov').className='ov hide',rem=i=>rnd(i.amount-paidOf(i)),isIn=i=>i.type=='income',mon=i=>i.contract_months?.month||i.created_at.slice(0,7)+'-01';
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const sumR=l=>l.reduce((s,x)=>s+rem(x),0);
@@ -53,7 +53,7 @@ function draw(){const q=nz($('#q').value),o=INV.filter(i=>rem(i)>0.001&&(FIL=='a
 // ---------- التحصيل / الصرف ----------
 function col(id){const i=INV.find(x=>x.id==id);if(!i)return;const w=isIn(i)?'تحصيل':'صرف';
  showM(w+' — '+i.suppliers.name,`<div class="krow k-${isIn(i)?'collect':'pay'}" style="margin-top:0"><b>${esc(i.description)||'بلا بيان'}</b><small style="display:block">${esc(i.contracts.title)} • فاتورة ${esc(i.code)} • المتبقي ${money(rem(i))}</small></div><label>تاريخ ال${w}</label><input id="c1" type="date" value="${today()}" max="${today()}" oninput="prv('${id}')"><label>المبلغ (من أصل الفاتورة)</label><input id="c2" type="number" inputmode="decimal" value="${rem(i)}" oninput="prv('${id}')"><label>بيان (اختياري)</label><input id="c3"><div id="c4" class="msg" style="margin-top:10px"></div>`,'تأكيد ال'+w,async()=>{
-  const f=(await api('invoices?id=eq.'+id+'&select=*,contracts(late_rate,grace_day,late_fee),contract_months(month),payments(amount,status,created_at)'))[0];if(!f)throw Error('هذه الفاتورة لم تعد موجودة (حُذفت من شاشة أخرى)');
+  const f=(await api('invoices?id=eq.'+id+'&select=*,contracts(late_rate,grace_day,late_fee),contract_months(month),payments(amount,status,created_at)'))[0];if(!f)throw Error('هذه الفاتورة لم تعد موجودة (حُذفت من شاشة أخرى)');if(f.apv&&f.apv!='approved')throw Error('هذه الفاتورة لم تُعتمد من مدير الحسابات بعد');
   const d=$('#c1').value,a=+$('#c2').value;if(!d)throw Error('اختر التاريخ');if(d>today())throw Error('لا يمكن التنفيذ بتاريخ مستقبلي');const r=rnd(f.amount-paidOf(f));if(!(r>0.001))throw Error('هذه الفاتورة نُفِّذت بالكامل من شاشة أخرى');if(!(a>0)||a>r+0.001)throw Error('المبلغ غير صالح أو أكبر من المتبقي ('+r+')');
   const lp=(f.payments||[]).filter(p=>p.status=='approved').map(p=>p.created_at.slice(0,10)).sort().pop();if(lp&&d<lp)throw Error('التاريخ قبل آخر عملية على هذه الفاتورة ('+lp+')');
   const li=f.type=='income'?lateInfo(f,mon(f),f.contracts,d):{fee:0,note:''},nt=$('#c3').value.trim();MINE.set(id,Date.now());
