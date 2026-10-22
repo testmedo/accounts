@@ -1,0 +1,100 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>إيرادات الطلاب</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=26">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
+<main><div id="msg" class="hide"></div>
+<div id="home" class="cards"></div>
+
+<section id="up" class="hide"><button class="back" onclick="go()">→ رجوع للتبويبات</button>
+<div class="card frm"><h2>رفع ملف إيرادات الطلاب (Excel)</h2>
+<small>الملف اليومي بالشكل المعتاد (الحالة • السريال • اسم الطالب • الكود • الكلية • المستوى • نوع الإذن • المبلغ • تاريخ الإنشاء • المحصل • تاريخ التحصيل …).<br>
+كود الطالب هو الأساس: إن لم يكن موجودًا يُنشأ الطالب بياناته (الكود والاسم والكلية والمستوى). كل سطر يُسجَّل إيرادًا منفَّذًا في الخزينة بتاريخ التحصيل، والسريال هو كود الفاتورة فلا يُرفع نفس السطر مرتين. تظهر مراجعة قبل الحفظ.</small>
+<input id="f" type="file" accept=".xlsx,.xls" style="margin-top:10px"><button class="b" onclick="readF()">قراءة ومراجعة</button></div><div id="rv"></div></section>
+
+<section id="qs" class="hide"><button class="back" onclick="go()">→ رجوع للتبويبات</button>
+<div class="card frm"><h2>الاستعلام عن طالب</h2><input id="q" placeholder="اكتب كود الطالب أو اسمه أو جزءًا منه" oninput="find()" autocomplete="off">
+<small style="display:block;margin-top:6px">للدفع للطالب (استرداد مثلًا): أنشئ فاتورة من المحاسبة أو قيدًا من الخزينة واختر العقد «اسم الطالب — إيرادات الطالب».</small></div><div id="sr"></div><div id="sd"></div></section></main>
+<script src="js/app.js?v=26"></script><script>
+const U=guard(['treasury','manager','admin']);
+const E=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'),CT='إيرادات الطالب';
+function go(id){['up','qs'].forEach(x=>$('#'+x).classList.toggle('hide',x!=id));$('#home').classList.toggle('hide',!!id);$('#msg').className='hide';scrollTo(0,0)}
+$('#home').innerHTML=card('up','رفع ملف إيرادات اليوم','Excel يومي: يُنشئ الطلاب الجدد ويسجّل الإيراد في الخزينة',"go('up')")+card('user','الاستعلام عن طالب','كل ما دفعه الطالب وكل الفواتير التي أُنشئت له',"go('qs')");
+// ---------- أدوات القراءة ----------
+const AD='٠١٢٣٤٥٦٧٨٩',dg=s=>String(s==null?'':s).replace(/[٠-٩]/g,d=>AD.indexOf(d)).replace(/[\u200e\u200f\u202a-\u202e]/g,''),pad=n=>String(n).padStart(2,'0');
+const nm=s=>nz(dg(s)).replace(/[\u064b-\u065f]/g,'').replace(/[إأآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه');
+const ymd=(y,m,d)=>{y=+y;m=+m;d=+d;return(y>1990&&y<2100&&m>=1&&m<=12&&d>=1&&d<=31)?y+'-'+pad(m)+'-'+pad(d):''};
+function pDate(v){if(v==null||v==='')return'';if(v instanceof Date)return ymd(v.getFullYear(),v.getMonth()+1,v.getDate());if(typeof v=='number'){const d=new Date(Math.round((v-25569)*864e5));return ymd(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate())}
+ const s=dg(v).trim();let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);if(m)return ymd(m[1],m[2],m[3]);m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);if(m)return ymd(m[3],m[2],m[1]);return''}
+function pTime(v){if(v==null||v==='')return'';if(typeof v=='number'){const sec=Math.round((v%1)*86400);return pad(Math.floor(sec/3600)%24)+':'+pad(Math.floor(sec%3600/60))}
+ const m=dg(v).trim().match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([صم])?/);if(!m)return'';let h=+m[1];if(m[4]=='م'&&h<12)h+=12;if(m[4]=='ص'&&h==12)h=0;return pad(h)+':'+m[2]}
+const num=v=>{if(typeof v=='number')return v;const s=dg(v).replace(/[,٬\s]/g,'').replace('٫','.');return s===''?NaN:Number(s)};
+const COLS={st:'الحاله',sr:'السريال',nm:'اسم الطالب',cd:'الكود',co:'الكليه',lv:'المستوي',pt:'نوع الاذن',am:'المبلغ',cdt:'تاريخ الانشاء',who:'المحصل',pdt:'تاريخ التحصيل',ptm:'وقت التحصيل',rs:'سبب تعليق التسجيل'};
+const inl=a=>encodeURIComponent('('+a.map(x=>'"'+String(x).replace(/"/g,'')+'"').join(',')+')');
+async function inQ(table,col,vals,sel,extra){const o=[];for(let i=0;i<vals.length;i+=80)o.push(...await api(`${table}?select=${sel}&${col}=in.${inl(vals.slice(i,i+80))}${extra||''}`));return o}
+// ---------- قراءة الملف + المراجعة ----------
+let PL=null;
+async function readF(){try{const fl=$('#f').files[0];if(!fl)return msg('اختر ملف Excel أولًا',1);msg('جارٍ قراءة الملف…');
+ const wb=XLSX.read(await fl.arrayBuffer(),{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],A=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+ let hr=-1;for(let i=0;i<Math.min(A.length,15);i++){const h=A[i].map(nm);if(h.includes(COLS.cd)&&h.includes(COLS.am)){hr=i;break}}
+ if(hr<0)return msg('لم أجد صف العناوين (الكود والمبلغ). تأكد أن الملف هو ملف إيرادات الطلاب المعتاد',1);
+ const H=A[hr].map(nm),ix={};for(const k in COLS)ix[k]=H.indexOf(COLS[k]);
+ const miss=['sr','cd','nm','am'].filter(k=>ix[k]<0);if(miss.length)return msg('أعمدة ناقصة في الملف: '+miss.map(k=>COLS[k]).join('، '),1);
+ const rows=[];let fc=null,ft=null;
+ for(let i=hr+1;i<A.length;i++){const r=A[i],g=k=>ix[k]>=0?r[ix[k]]:'',f0=nm(r[0]);
+  if(/^عدد السجلات/.test(f0)){fc=num(r[1]);continue}if(/^اجمالي/.test(f0)){ft=num(r[1]);continue}
+  const sr=dg(String(g('sr'))).trim(),cd=dg(String(g('cd'))).trim();if(!sr&&!cd)continue;
+  const pd=pDate(g('pdt')),cd2=pDate(g('cdt')),lv=String(g('lv')).trim();
+  rows.push({n:i+1,st:String(g('st')).trim(),sr,cd,nm:String(g('nm')).replace(/\s+/g,' ').trim(),co:String(g('co')).trim(),lv:(lv&&nm(lv)!='غير محدد')?lv:'',pt:String(g('pt')).trim(),am:num(g('am')),cdt:cd2,pdt:pd,ptm:pTime(g('ptm')),who:String(g('who')).trim(),rs:String(g('rs')).trim(),why:'',warn:[]})}
+ if(!rows.length)return msg('لا توجد صفوف بيانات في الملف',1);
+ // تحقق محلي
+ const seen=new Set();let allSum=0;
+ rows.forEach(r=>{allSum+=isFinite(r.am)?r.am:0;const k=nm(r.sr);
+  if(!r.sr)r.why='بدون سريال';else if(!r.cd)r.why='بدون كود طالب';else if(!r.nm)r.why='بدون اسم';else if(!(r.am>0))r.why='مبلغ غير صالح';
+  else if(r.st&&nm(r.st)!=nm('تم التفعيل'))r.why='الحالة: '+r.st+' (غير مفعّل)';
+  else if(!r.pdt&&!r.cdt)r.why='بدون تاريخ';else if(seen.has(k))r.why='سريال مكرر داخل الملف';
+  seen.add(k);if(!r.pdt&&r.cdt&&!r.why)r.warn.push('بدون تاريخ تحصيل — استُخدم تاريخ الإنشاء')});
+ const ok=rows.filter(r=>!r.why);msg('جارٍ مطابقة البيانات مع قاعدة البيانات…');
+ const codes=[...new Set(ok.map(r=>r.cd))],sups=await inQ('suppliers','code',codes,'id,code,name,kind'),sm=new Map(sups.map(s=>[s.code,s]));
+ const exI=new Set((await inQ('invoices','code',ok.map(r=>r.sr),'code')).map(x=>nm(x.code)));
+ const stIds=sups.filter(s=>s.kind=='student').map(s=>s.id),cons=stIds.length?await inQ('contracts','supplier_id',stIds,'id,supplier_id','&title=eq.'+encodeURIComponent(CT)):[],cm=new Map(cons.map(c=>[c.supplier_id,c.id]));
+ const newSt=new Map();
+ ok.forEach(r=>{const s=sm.get(r.cd);if(exI.has(nm(r.sr))){r.why='سبق رفعه (السريال موجود)';return}
+  if(s&&s.kind!='student'){r.why='الكود مسجّل لمورد/موظف: '+s.name;return}
+  if(s&&nm(s.name)!=nm(r.nm))r.warn.push('الاسم في النظام: '+s.name);
+  if(!s&&!newSt.has(r.cd))newSt.set(r.cd,{code:r.cd,name:r.nm,college:r.co,level:r.lv})});
+ const imp=rows.filter(r=>!r.why),skip=rows.filter(r=>r.why),sum=imp.reduce((s,r)=>s+r.am,0);
+ PL={file:fl.name,rows,imp,skip,newSt,sm,cm,sum,sid:new Map([...sm].filter(([,s])=>s.kind=='student').map(([c,s])=>[c,s.id]))};
+ const chk=(fc!=null&&fc!==rows.length?`<div class="msg e">عدد السجلات في أسفل الملف (${fc}) لا يساوي الصفوف المقروءة (${rows.length})</div>`:'')+(ft!=null&&Math.abs(ft-allSum)>0.01?`<div class="msg e">إجمالي المبالغ في أسفل الملف (${money(ft)}) لا يساوي مجموع الصفوف المقروءة (${money(allSum)})</div>`:(ft!=null?`<div class="msg">تم التحقق: عدد السجلات والإجمالي مطابقان لأسفل الملف (${rows.length} • ${money(ft)})</div>`:''));
+ $('#rv').innerHTML=`<div class="card frm"><h2>مراجعة قبل الرفع — ${E(fl.name)}</h2>${chk}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0"><div class="stat"><small>صفوف ستُرفع</small><b style="color:#237a4b">${imp.length}</b></div><div class="stat"><small>إجمالي الإيراد</small><b>${money(sum)}</b></div><div class="stat"><small>طلاب جدد سيُنشأون</small><b>${newSt.size}</b></div><div class="stat"><small>صفوف لن تُرفع</small><b style="color:#b3341f">${skip.length}</b></div></div>
+${skip.length?`<details class="card"><summary><b>الصفوف التي لن تُرفع (${skip.length})</b></summary>${skip.map(r=>`<div class="row"><div><span class="t">${E(r.nm)}</span><small>${E(r.cd)} • ${E(r.sr)} • ${money(r.am||0)}</small></div><small style="color:#b3341f">سطر ${r.n}: ${E(r.why)}</small></div>`).join('')}</details>`:''}
+${newSt.size?`<details class="card"><summary><b>الطلاب الجدد (${newSt.size})</b></summary>${[...newSt.values()].map(s=>`<div class="row"><div><span class="t">${E(s.name)}</span><small>${E(s.code)} • ${E(s.college)||'—'} • ${E(s.level)||'—'}</small></div></div>`).join('')}</details>`:''}
+<details class="card" open><summary><b>الصفوف التي ستُرفع (${imp.length})</b></summary>${imp.slice(0,200).map(r=>`<div class="row"><div><span class="t">${E(r.nm)}</span><small>${E(r.cd)} • ${E(r.sr)} • ${E(r.pt)}</small><small>${E(r.co)} • تحصيل: ${r.pdt?fdu(r.pdt):'—'}${r.ptm?' '+r.ptm:''} • المحصّل: ${E(r.who)||'—'}</small>${r.warn.map(w=>`<small style="color:#b8862b">${E(w)}</small>`).join('')}</div><div class="amt">${money(r.am)}</div></div>`).join('')||'<small>لا توجد صفوف</small>'}${imp.length>200?`<small>… و${imp.length-200} صف آخر</small>`:''}</details>
+<div class="grid"><button class="b" id="ib" onclick="doImport()" ${imp.length?'':'disabled'}>تأكيد الرفع (${imp.length})</button><button class="b g" onclick="PL=null;$('#rv').innerHTML=''">إلغاء</button></div></div>`;
+ msg('اكتملت المراجعة — راجع الأرقام ثم اضغط «تأكيد الرفع»');$('#rv').scrollIntoView()}catch(e){msg(errT(e),1)}}
+// ---------- الرفع الفعلي ----------
+async function doImport(){const P=PL;if(!P||!P.imp.length)return;if(!confirm(`رفع ${P.imp.length} سطر بإجمالي ${money(P.sum)} وإنشاء ${P.newSt.size} طالب جديد؟`))return;
+ const b=$('#ib');b.disabled=true;let made=0,done=0;
+ try{const ns=[...P.newSt.values()];
+  for(let i=0;i<ns.length;i+=200){msg(`جارٍ إنشاء الطلاب… ${i}/${ns.length}`);const r=await api('suppliers','POST',ns.slice(i,i+200).map(s=>({code:s.code,name:s.name,field:s.college||null,kind:'student',level:s.level||null})));r.forEach(x=>P.sid.set(x.code,x.id));made+=r.length}
+  const need=[...new Set(P.imp.map(r=>P.sid.get(r.cd)))].filter(id=>id&&!P.cm.has(id));
+  for(let i=0;i<need.length;i+=200){msg(`جارٍ تجهيز حسابات الطلاب… ${i}/${need.length}`);const r=await api('contracts','POST',need.slice(i,i+200).map(id=>({supplier_id:id,title:CT,created_by:U.id})));r.forEach(c=>P.cm.set(c.supplier_id,c.id))}
+  for(let i=0;i<P.imp.length;i+=100){const ch=P.imp.slice(i,i+100);msg(`جارٍ رفع الإيرادات… ${done}/${P.imp.length}`);
+   const inv=await api('invoices','POST',ch.map(r=>({contract_id:P.cm.get(P.sid.get(r.cd)),supplier_id:P.sid.get(r.cd),type:'income',dest:'treasury',code:r.sr,amount:r.am,description:r.pt||null,created_by:U.id,created_at:ts(r.cdt||r.pdt),src:'students'}))),by=new Map(ch.map(r=>[nm(r.sr),r]));
+   try{await api('payments','POST',inv.map(v=>{const r=by.get(nm(v.code)),d=r.pdt||r.cdt;return{invoice_id:v.id,amount:r.am,status:'approved',created_by:U.id,approved_by:U.id,created_at:ts(d),decided_at:ts(d),note:['المحصّل: '+(r.who||'—'),r.ptm,r.rs?'سبب تعليق: '+r.rs:''].filter(Boolean).join(' • ')}}))}
+   catch(e){try{await api('invoices?id=in.('+inv.map(v=>v.id).join(',')+')','DELETE')}catch(_){}throw e}
+   done+=ch.length}
+  await audit('رفع إيرادات طلاب (Excel)','invoices',null,null,null,{'الملف':P.file,'عدد الإيصالات':done,'الإجمالي':P.sum,'طلاب جدد':made});
+  PL=null;$('#rv').innerHTML=`<div class="card frm"><h2>تم الرفع بنجاح</h2><div class="msg">تم تسجيل ${done} إيراد بإجمالي ${money(P.sum)} في الخزينة${made?' وإنشاء '+made+' طالب جديد':''}. تظهر الحركات في «تقرير الخزينة» بتاريخ التحصيل.</div></div>`;msg('تم الرفع: '+done+' إيراد'+(made?' • '+made+' طالب جديد':''));$('#f').value=''}
+ catch(e){msg('توقف الرفع بعد '+done+' سطر: '+errT(e)+' — يمكنك إعادة رفع نفس الملف، فالسطور المرفوعة لا تتكرر',1);b.disabled=false}}
+// ---------- الاستعلام عن طالب ----------
+let tm;function find(){clearTimeout(tm);tm=setTimeout(async()=>{const v=dg($('#q').value).trim();$('#sd').innerHTML='';if(!v){$('#sr').innerHTML='';return}
+ try{const e=encodeURIComponent(v.replace(/[*%,()]/g,'')),s=await api(`suppliers?kind=eq.student&or=(code.ilike.*${e}*,name.ilike.*${e}*)&order=name&limit=20`);
+  $('#sr').innerHTML=s.map(x=>`<div class="card" onclick="showS('${x.id}')" style="cursor:pointer"><span class="t">${E(x.name)}</span><small>${E(x.code)} • ${E(x.field)||'—'}${x.level?' • '+E(x.level):''}</small></div>`).join('')||'<div class="msg">لا يوجد طالب بهذا الكود أو الاسم</div>'}catch(e){msg(errT(e),1)}},300)}
+async function showS(id){try{$('#sr').innerHTML='';$('#sd').innerHTML='<div class="msg">جارٍ التحميل…</div>';
+ const s=(await api('suppliers?id=eq.'+id))[0],inv=await apiAll(`invoices?supplier_id=eq.${id}&select=*,contracts(title),payments(amount,fee,note,status,created_at)&order=created_at.desc`);
+ const ex=i=>(i.payments||[]).filter(p=>p.status=='approved'),inc=inv.filter(i=>i.type=='income'),out=inv.filter(i=>i.type!='income'),sm=l=>l.reduce((a,i)=>a+paidOf(i),0);
+ const who=i=>{const n=ex(i)[0]?.note||'',m=n.split(' • ')[0].match(/^المحص\S{1,3}ل\s*:\s*(.*)$/);return m?m[1]:''},pdt=i=>{const p=ex(i).map(x=>x.created_at).sort().pop();return p?fdu(p):'—'};
+ $('#sd').innerHTML=`<div class="card"><h2>${E(s.name)}</h2><small>الكود: ${E(s.code)} • الكلية: ${E(s.field)||'—'} • المستوى: ${E(s.level)||'—'}</small></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0"><div class="stat"><small>عدد الفواتير</small><b>${inv.length}</b></div><div class="stat"><small>إجمالي ما دفعه الطالب (إيراد)</small><b style="color:#237a4b">${money(sm(inc))}</b></div>${out.length?`<div class="stat"><small>إجمالي ما دُفع للطالب (مصروف)</small><b style="color:#b3341f">${money(sm(out))}</b></div>`:''}</div>
+<div class="sheet"><table><thead><tr><th>تاريخ الفاتورة</th><th>الكود / السريال</th><th>النوع</th><th>نوع الإذن / البيان</th><th>المبلغ</th><th>المنفَّذ</th><th>تاريخ التحصيل / الدفع</th><th>المحصِّل</th></tr></thead><tbody>${inv.map(i=>`<tr><td>${fdu(i.created_at)}</td><td>${E(i.code)}</td><td>${i.type=='income'?'إيراد':'مصروف'}</td><td>${E(i.description)}</td><td>${money(i.amount)}</td><td>${money(paidOf(i))}</td><td>${pdt(i)}</td><td>${E(who(i))}</td></tr>`).join('')||'<tr><td colspan="8">لا توجد فواتير لهذا الطالب</td></tr>'}</tbody></table></div>`;$('#sd').scrollIntoView()}catch(e){msg(errT(e),1)}}
+</script></body></html>
