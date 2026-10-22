@@ -60,7 +60,7 @@ const kindOf=i=>i.type=='income'?(i.cr&&i.cr.role=='treasury'?'deposit':'collect
 const KN={collect:'تحصيل',deposit:'إيداع',pay:'دفع / صرف'};
 
 // غرامة التأخير تُطبَّق فقط على العقد السنوي (بفترة زمنية وعقود شهرية) الذي فُعِّلت له الغرامة (contracts.late_fee)، وليس على أي إيداع
-function lateInfo(inv,monthStr,contract,payDate){const r=_lateInfo(inv,monthStr,contract,payDate);if(contract&&contract.late_fee)return r;return{...r,days:0,fee:0,note:'',off:true}}
+function lateInfo(inv,monthStr,contract,payDate){const r=_lateInfo(inv,monthStr,contract,payDate);if(contract&&contract.late_fee&&!(inv&&inv.fee_incl))return r;return{...r,days:0,fee:0,note:'',off:true}}
 
 // ===== إيصال دفع / إيداع قابل للطباعة من المتصفح (يظهر فور إنشاء الفاتورة أو من آخر العمليات) =====
 function closeReceipt(){const e=document.getElementById('rcov');if(e)e.remove();document.body.classList.remove('rcp');const s=document.getElementById('rcpg');if(s)s.remove()}
@@ -85,12 +85,12 @@ async function fillCode(el,p,force){if(!el||(!force&&el.value&&el.dataset.auto!=
 async function sheetToPdf(sel,n,name){try{msg('جارٍ إنشاء ملف PDF… قد يستغرق بعض الوقت للتقارير الكبيرة');await document.fonts.ready;
  const el=$(sel),id=el.id,land=n>6,W=land?1500:1000,fs=n>11?11:n>8?12:14,{jsPDF}=window.jspdf;
  const css=e=>{e.style.width=W+'px';e.style.overflow='visible';e.style.border='0';e.style.padding='16px';e.style.background='#fff';e.querySelectorAll('table').forEach(t=>{t.style.fontSize=fs+'px';t.style.width='100%'})};
- const m=el.cloneNode(true);m.removeAttribute('id');m.style.position='absolute';m.style.left='-99999px';m.style.top='0';document.body.appendChild(m);css(m);
+ const m=el.cloneNode(true);m.removeAttribute('id');m.querySelectorAll('.noprint').forEach(e=>e.remove());m.style.position='absolute';m.style.left='-99999px';m.style.top='0';document.body.appendChild(m);css(m);
  const top=m.getBoundingClientRect().top,H=Math.ceil(m.scrollHeight),cuts=[...m.querySelectorAll('tr')].map(t=>t.getBoundingClientRect().bottom-top).filter(v=>v>0);document.body.removeChild(m);
  const pdf=new jsPDF({orientation:land?'l':'p',unit:'pt',format:'a4'}),pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),k=(pw-40)/W,pagePx=(ph-55)/k,rg=[];
  let y=0;while(y<H-1){const lim=y+pagePx;let end=H;if(lim<H){const c=cuts.filter(v=>v>y+40&&v<=lim);end=c.length?Math.max(...c):lim}rg.push([y,end]);y=end}
  for(let i=0;i<rg.length;i++){const [s,e2]=rg[i];msg(`جارٍ إنشاء ملف PDF… صفحة ${i+1} من ${rg.length}`);const sc=Math.min(2,Math.sqrt(12e6/(W*(e2-s))));
-  const cv=await html2canvas(el,{scale:sc,backgroundColor:'#fff',windowWidth:W+60,windowHeight:H+300,y:s,height:e2-s,width:W,scrollX:0,scrollY:0,onclone:d=>{const x=d.getElementById(id);css(x);x.style.position='absolute';x.style.left='0';x.style.top='0'}});
+  const cv=await html2canvas(el,{scale:sc,backgroundColor:'#fff',windowWidth:W+60,windowHeight:H+300,y:s,height:e2-s,width:W,scrollX:0,scrollY:0,onclone:d=>{const x=d.getElementById(id);x.querySelectorAll('.noprint').forEach(e=>e.remove());css(x);x.style.position='absolute';x.style.left='0';x.style.top='0'}});
   if(i)pdf.addPage();pdf.addImage(cv.toDataURL('image/png'),'PNG',20,20,W*k,(e2-s)*k);cv.width=cv.height=0}
  for(let p=1;p<=rg.length;p++){pdf.setPage(p);pdf.setFontSize(9);pdf.text(p+' / '+rg.length,pw/2,ph-12,{align:'center'})}
  pdf.save(name);msg('تم تحميل ملف PDF ('+rg.length+' صفحة)')}catch(e){msg('تعذر إنشاء PDF: '+e.message+' — جرّب زر "طباعة" أو تحميل Excel',1)}}
