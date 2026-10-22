@@ -73,7 +73,7 @@ function showReceipt(d){closeReceipt();const E=s=>String(s==null?'':s).replace(/
  o.innerHTML=`<div class="rc-bar"><b>${E(d.banner||'')}</b><div><button class="b s" onclick="window.print()">طباعة الإيصال</button> <button class="b s g" onclick="closeReceipt()">إغلاق</button></div></div>
 <div class="rc-sheet">${d.done?`<div class="rc-wm">${isP?'تم الصرف':'تم الإيداع'}</div>`:''}<div class="rc-h"><img src="assets/logo.png" alt=""><div><small>نظام متابعة مدفوعات الموردين والمقاولين</small><div class="rc-t">${isP?'إيصال دفع':'إيصال إيداع'}</div></div><div class="rc-n">رقم: ${E(d.code)}</div></div>
 <table class="rc-tb">${tb}</table>
-<div class="rc-sig"><div><div class="ln"></div><b>توقيع مدير الحسابات</b></div><div><div class="ln"></div><b>${isP?'توقيع المستلم':'توقيع محاسب الخزينة'}</b></div></div>
+<div class="rc-sig"><div><div class="ln"></div><b>${d.src=='treasury'?'توقيع محاسب الخزينة':'توقيع مدير الحسابات'}</b></div><div><div class="ln"></div><b>توقيع المستلم</b></div></div>
 <div class="rc-f">أُعدّ بواسطة: ${E(u?u.full_name:'')} • تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</div></div>`;
  document.body.appendChild(o);document.body.classList.add('rcp');const s=document.createElement('style');s.id='rcpg';s.textContent='@page{size:A4 portrait;margin:8mm}';document.head.appendChild(s);o.scrollTop=0}
 
