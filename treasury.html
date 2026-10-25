@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الخزينة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=26"><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head><body>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=28"><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div><div id="live" class="live hide noprint"></div>
 <div id="home" class="cards"></div>
 
@@ -15,10 +15,17 @@
 <label>العقد الرئيسي (اكتب للبحث باسم المورد أو العقد)</label><input id="rc" list="dlc" autocomplete="off" placeholder="ابحث..."><label>كود الفاتورة / الإيصال</label><input id="rcode" oninput="this.dataset.auto=''"><small>يُقترح كود تلقائي (D للإيداع • E للصرف) ويمكنك تعديله</small><label>المبلغ</label><input id="ram" type="number" inputmode="decimal"><label>التاريخ</label><input id="rdt" type="date"><label>البيان</label><textarea id="rds" rows="2"></textarea><button class="b" onclick="addEntry()">تنفيذ القيد</button></div></section>
 
 <section id="p3" class="hide"><button class="back" onclick="tab(0)">→ رجوع للتبويبات</button><div id="rec"></div></section>
+<section id="p5" class="hide"><button class="back noprint" onclick="tab(0)">→ رجوع للتبويبات</button>
+<div class="card frm noprint"><h2>رصيد الخزينة</h2><div id="bal"><div class="msg">جارٍ التحميل…</div></div><button class="b s" style="margin-top:8px" onclick="balRefresh(true)">تحديث الآن</button></div>
+<div class="card frm noprint hide" id="opf"><h2>تحديد رصيد أول المدة</h2><small>متاح لمدير الحسابات والأدمن فقط. يُحسب رصيد الخزينة من هذا التاريخ فصاعدًا: الرصيد + الإيراد − المصروف.</small>
+<label>تاريخ رصيد أول المدة</label><input id="ob_d" type="date"><label>المبلغ</label><input id="ob_a" type="number" inputmode="decimal"><label>ملاحظة (اختياري)</label><input id="ob_n"><button class="b" onclick="addOpen()">حفظ رصيد أول المدة</button></div>
+<div class="card noprint hide" id="opl"></div>
+<div class="card frm noprint"><h2>التقرير اليومي للخزينة</h2><label>اليوم</label><input id="rd" type="date" oninput="dayRep()"><div class="grid"><button class="b" onclick="prDay()">طباعة التقرير</button><button class="b g" onclick="pdfDay()">تحميل PDF</button></div></div>
+<div class="sheet" id="dsheet"></div></section>
 <section id="p4" class="hide"><button class="back noprint" onclick="tab(0)">→ رجوع للتبويبات</button><div id="cwt"></div></section></main>
 <datalist id="dlc"></datalist>
 <div id="ov" class="ov hide"><div class="md"><h2><span id="mt"></span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div><div class="grid"><button class="b" id="ms">تأكيد</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
-<script src="js/app.js?v=26"></script><script>
+<script src="js/app.js?v=28"></script><script>
 const U=guard(['treasury','manager','admin']);
 let INV=[],CM={},SP={},REC=[],TAB=0,FIL='all',PREV=null,MINE=new Map(),busy=false,pend=false,lt;
 const Q='invoices?select=*,suppliers(name,code,phone),contracts(title,late_rate,grace_day,late_fee),contract_months(month),cr:users!invoices_created_by_fkey(full_name,role),payments(id,amount,status,created_at,fee)&dest=eq.treasury&apv=eq.approved&src=is.null&order=created_at.desc';
@@ -29,16 +36,16 @@ function flash(t){const l=$('#live');l.textContent=t;l.className='live';clearTim
 function showM(t,h,l,fn){$('#mt').textContent=t;$('#mb').innerHTML=h;$('#ms').textContent=l;$('#me').className='msg e hide';$('#ms').onclick=async()=>{try{await fn();cl()}catch(e){$('#me').textContent=errT(e).replace(/^خطأ: /,'');$('#me').className='msg e'}};$('#ov').className='ov'}
 // ---------- التبويبات: صفحة رئيسية ببطاقات، وكل تبويب يفتح وحده مع زر رجوع ----------
 function homeDraw(){const o=INV.filter(i=>rem(i)>0.001),inc=o.filter(isIn).length,out=o.length-inc;
- $('#home').innerHTML=card('wallet','المستحقات',PREV?`${inc} للتحصيل • ${out} للصرف`:'جارٍ التحميل…',"tab(1)")+card('receipt','قيد جديد','إيداع أو صرف مباشر دون اعتماد',"tab(2)")+card('list','آخر العمليات','آخر 100 عملية منفَّذة مع طباعة الإيصال',"tab(3)")+card('chart','تقرير الخزينة','كل الحركات (طلاب وموردون وموظفون) — اختر الحقول ثم Excel / PDF / طباعة',"tab(4)")}
+ $('#home').innerHTML=card('wallet','المستحقات',PREV?`${inc} للتحصيل • ${out} للصرف`:'جارٍ التحميل…',"tab(1)")+card('receipt','قيد جديد','إيداع أو صرف مباشر دون اعتماد',"tab(2)")+card('list','آخر العمليات','آخر 100 عملية منفَّذة مع طباعة الإيصال',"tab(3)")+card('chart','تقرير الخزينة','كل الحركات (طلاب وموردون وموظفون) — اختر الحقول ثم Excel / PDF / طباعة',"tab(4)")+card('coin','رصيد الخزينة',BALTXT||'الرصيد الحالي وتقرير اليوم (إيراد ومصروف) للطباعة',"tab(5)")}
 function setCode(f){return fillCode($('#rcode'),$('#rk').value=='out'?'E':'D',f)}
-function tab(n){if(n==2)setCode();TAB=n;[1,2,3,4].forEach(x=>$('#p'+x).classList.toggle('hide',x!=n));$('#home').classList.toggle('hide',n!=0);$('#msg').className='hide';scrollTo(0,0);if(n==3)loadRec();if(n==4)cashWidget($('#cwt'),{id:'tcr',dest:'treasury',title:'تقرير الخزينة',hint:'كل حركات الخزينة المنفَّذة: إيرادات الطلاب (المرفوعة من Excel) والموردين والموظفين، دون التحويلات. اختر الحقول ثم حمّل أو اطبع.',choose:true,print:true,file:'treasury_report'});if(n==0)homeDraw()}
+function tab(n){if(n==2)setCode();TAB=n;[1,2,3,4,5].forEach(x=>$('#p'+x).classList.toggle('hide',x!=n));$('#home').classList.toggle('hide',n!=0);$('#msg').className='hide';scrollTo(0,0);if(n==3)loadRec();if(n==5){$('#opf').classList.toggle('hide',!CAN);$('#rd').value=$('#rd').value||today();balRefresh(true);dayRep()}if(n==4)cashWidget($('#cwt'),{id:'tcr',dest:'treasury',title:'تقرير الخزينة',hint:'كل حركات الخزينة المنفَّذة: إيرادات الطلاب (المرفوعة من Excel) والموردين والموظفين، دون التحويلات. اختر الحقول ثم حمّل أو اطبع.',choose:true,print:true,file:'treasury_report'});if(n==0)homeDraw()}
 document.querySelectorAll('#fl button').forEach(b=>b.onclick=()=>{FIL=b.dataset.v;document.querySelectorAll('#fl button').forEach(x=>x.classList.toggle('on',x==b));draw()});
 // ---------- تحميل مباشر (يتجدد تلقائيًا لتظهر عمليات بقية شاشات الخزينة فورًا) ----------
 async function load(){if(busy){pend=true;return}busy=true;try{const inv=await apiAll(Q),cur=new Map(inv.map(i=>[i.id,rem(i)]));
   if(PREV){const nw=inv.filter(i=>!PREV.has(i.id)&&rem(i)>0.001&&!isMine(i.id)),done=[...PREV].filter(([id,r])=>r>0.001&&(cur.get(id)??0)<=0.001&&!isMine(id)),chg=inv.filter(i=>PREV.has(i.id)&&PREV.get(i.id)>0.001&&cur.get(i.id)>0.001&&Math.abs(PREV.get(i.id)-cur.get(i.id))>0.004&&!isMine(i.id));
    const m=[];if(nw.length)m.push(`وصلت ${nw.length} فاتورة جديدة`);if(done.length)m.push(`تم تنفيذ أو حذف ${done.length} فاتورة من شاشة أخرى`);if(chg.length)m.push(`تم تحصيل/صرف جزء من ${chg.length} فاتورة من شاشة أخرى`);if(m.length)flash(m.join(' • '))}
   PREV=cur;INV=inv;draw();if(TAB==0)homeDraw();$('#upd').textContent='آخر تحديث '+new Date().toLocaleTimeString('ar-EG')+' • متزامن تلقائيًا مع بقية شاشات الخزينة'}catch(e){$('#upd').textContent='تعذر التحديث: '+e.message.slice(0,60)}finally{busy=false;if(pend){pend=false;load()}}}
-function refresh(){if(document.hidden)return;load();if(TAB==3)loadRec()}
+function refresh(){if(document.hidden)return;load();if(TAB==3)loadRec();balTick()}
 setInterval(refresh,5000);document.addEventListener('visibilitychange',refresh);
 function row(i){const k=isIn(i)?'collect':'pay',li=isIn(i)?lateInfo(i,mon(i),i.contracts,today()):null,ph=i.suppliers.phone;
  return `<div class="krow k-${k}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><span class="kbadge">${KN[k]}</span><b style="font-size:1.15rem;display:block;margin-top:4px">${esc(i.suppliers.name)}</b>${ph?`<a href="tel:${esc(ph)}" style="font-size:.85rem">${esc(ph)}</a>`:''}</div>
@@ -86,5 +93,42 @@ async function loadRec(){try{const p=await api('payments?status=eq.approved&invo
 function prRec(n){const x=REC[n],v=x.invoices,inc=v.type=='income',rows=[[inc?'المبلغ المحصَّل':'المبلغ المصروف',money(x.amount)],['تاريخ التنفيذ',fdu(x.created_at)]];if(+x.fee>0)rows.push(['غرامة تأخير',money(x.fee)]);if(inc)rows.push(['الإجمالي المستلم',money(+x.amount+ +x.fee)]);if(x.note)rows.push(['بيان',x.note]);if(x.ex&&x.ex.full_name)rows.push([inc?'حصّله':'صرفه',x.ex.full_name]);
  showReceipt({src:'treasury',kind:inc?'income':'pay',supplier:v.suppliers.name+' ('+v.suppliers.code+')',contract:v.contracts.title,month:mlabel(v.created_at),typeLabel:inc?'إيداع من':'مدفوع إلى',destLabel:'الخزينة',code:v.code,date:fdu(v.created_at),amount:money(v.amount),desc:v.description,image:v.image_url,rows,done:true})}
 Promise.all([apiAll('suppliers?select=id,name,code,phone,field&order=name'),apiAll('contracts?select=id,supplier_id,title&order=title')]).then(([s,c])=>{s.forEach(x=>SP[x.id]=x);c.forEach(x=>CM[(SP[x.supplier_id]?.name||'')+' — '+x.title]=x);$('#dlc').innerHTML=Object.keys(CM).map(k=>`<option value="${k}">`).join('')});
-$('#rdt').valueAsDate=new Date();homeDraw();load();
+
+// ---------- رصيد الخزينة (رصيد أول المدة + الإيراد − المصروف) ----------
+const CAN=['manager','admin'].includes(U.role),OPQ='treasury_opening?select=*,cr:users!treasury_opening_created_by_fkey(full_name)&order=open_date.desc,created_at.desc';
+let OPS=[],PC=null,BALTXT='',LB=0;
+const addDays=(s,n)=>{const d=new Date(s+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+async function sumQ(a,b){let q='payments?status=eq.approved&select=amount,fee,invoices!inner(type,dest)&invoices.dest=eq.treasury&order=created_at';if(a)q+='&created_at=gte.'+a+'T00:00:00Z';if(b)q+='&created_at=lte.'+b+'T23:59:59Z';
+ let inc=0,exp=0;(await apiAll(q)).forEach(p=>{if(p.invoices.type=='income')inc+=+p.amount+(+p.fee||0);else exp+=+p.amount});return{inc:rnd(inc),exp:rnd(exp)}}
+async function balNow(){const T=today();OPS=await api(OPQ);const o=OPS.find(x=>x.open_date<=T);if(!o)return null;
+ if(!PC||PC.id!=o.id||PC.t!=T||Date.now()-PC.at>120000){const y=addDays(T,-1),s=o.open_date<=y?await sumQ(o.open_date,y):{inc:0,exp:0};PC={id:o.id,t:T,at:Date.now(),...s}}
+ const td=await sumQ(T,T);return{o,pi:PC.inc,pe:PC.exp,ti:td.inc,te:td.exp,bal:rnd(+o.amount+PC.inc-PC.exp+td.inc-td.exp)}}
+function opList(){const b=$('#opl');b.classList.toggle('hide',!OPS.length);if(!OPS.length)return;const T=today(),cur=OPS.find(x=>x.open_date<=T);
+ b.innerHTML='<h2>سجل أرصدة أول المدة</h2>'+OPS.map(x=>`<div class="row"><div><span class="t">${money(x.amount)}</span> <small>بتاريخ ${fdu(x.open_date)}${cur&&cur.id==x.id?' • المعمول به حاليًا':''}</small><small>${esc(x.note)||''} ${x.cr?'• أضافه: '+esc(x.cr.full_name):''}</small></div>${CAN?`<button class="b s r" onclick="delOpen('${x.id}')">حذف</button>`:''}</div>`).join('')}
+async function balRefresh(force){LB=Date.now();try{if(force)PC=null;const r=await balNow(),T=new Date().toLocaleTimeString('ar-EG');
+  BALTXT=r?'الرصيد الحالي: '+money(r.bal):'لم يُحدَّد رصيد أول المدة بعد';if(TAB==0)homeDraw();opList();if(TAB!=5)return;
+  $('#bal').innerHTML=r?`<div class="stat" style="border-color:var(--gold)"><small>الرصيد الحالي للخزينة</small><b style="font-size:2rem;color:${r.bal>=0?'#237a4b':'#b3341f'}">${money(r.bal)}</b><small>آخر تحديث ${T} • يتجدد تلقائيًا</small></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px"><div class="stat"><small>رصيد أول المدة (${fdu(r.o.open_date)})</small><b>${money(r.o.amount)}</b></div><div class="stat"><small>إجمالي الإيراد منذ أول المدة</small><b style="color:#237a4b">${money(r.pi+r.ti)}</b></div><div class="stat"><small>إجمالي المصروف منذ أول المدة</small><b style="color:#b3341f">${money(r.pe+r.te)}</b></div><div class="stat"><small>اليوم: إيراد ${money(r.ti)}</small><b style="color:#b3341f;font-size:1rem">مصروف ${money(r.te)}</b></div></div>`
+  :`<div class="msg">لم يُحدَّد رصيد أول المدة بعد. ${CAN?'أضفه من النموذج أدناه.':'يحدده مدير الحسابات.'}</div>`}catch(e){if(TAB==5)$('#bal').innerHTML='<div class="msg e">تعذر حساب الرصيد: '+esc(errT(e))+(/treasury_opening|relation|schema/i.test(e.message)?' — شغّل ملف migration_v9_treasury_opening.sql':'')+'</div>'}}
+function balTick(){const n=Date.now();if((TAB==5&&n-LB>15000)||(TAB==0&&n-LB>30000))balRefresh()}
+async function addOpen(){try{if(!CAN)return msg('هذه الصلاحية لمدير الحسابات والأدمن فقط',1);const d=$('#ob_d').value,a=$('#ob_a').value;if(!d)return msg('اختر تاريخ رصيد أول المدة',1);if(a===''||!isFinite(+a))return msg('أدخل المبلغ',1);
+ if(!confirm('تحديد رصيد أول مدة '+money(+a)+' بتاريخ '+fdu(d)+'؟ سيُحسب رصيد الخزينة وتقاريرها من هذا التاريخ.'))return;
+ const r=(await api('treasury_opening','POST',{open_date:d,amount:+a,note:$('#ob_n').value.trim()||null,created_by:U.id}))[0];await audit('تحديد رصيد أول مدة للخزينة','treasury_opening',r.id,null,null,{'التاريخ':d,'المبلغ':+a,'ملاحظة':$('#ob_n').value.trim()});
+ ['ob_d','ob_a','ob_n'].forEach(x=>$('#'+x).value='');PC=null;msg('تم حفظ رصيد أول المدة');await balRefresh(true);dayRep()}catch(e){msg(errT(e),1)}}
+async function delOpen(id){const x=OPS.find(o=>o.id==id);if(!x||!CAN)return;if(!confirm('حذف رصيد أول المدة '+money(x.amount)+' بتاريخ '+fdu(x.open_date)+'؟ سيتغير رصيد الخزينة وتقاريرها.'))return;
+ try{await api('treasury_opening?id=eq.'+id,'DELETE');await audit('حذف رصيد أول مدة للخزينة','treasury_opening',id,null,{'التاريخ':x.open_date,'المبلغ':x.amount},null);PC=null;msg('تم حذف السجل');await balRefresh(true);dayRep()}catch(e){msg(errT(e),1)}}
+// ---------- التقرير اليومي ----------
+let DAYR=null;
+async function dayRep(){const d=$('#rd').value||today(),sh=$('#dsheet');DAYR=null;sh.innerHTML='<div class="msg">جارٍ التحميل…</div>';
+ try{const ops=await api(OPQ),o=ops.find(x=>x.open_date<=d);OPS=ops;
+  if(!o){sh.innerHTML='<div class="msg">لا يوجد رصيد أول مدة مسجّل بتاريخ يسبق '+fdu(d)+'. '+(CAN?'حدّده من النموذج أعلاه.':'يحدده مدير الحسابات.')+'</div>';return}
+  const y=addDays(d,-1),pv=o.open_date<=y?await sumQ(o.open_date,y):{inc:0,exp:0},opening=rnd(+o.amount+pv.inc-pv.exp),rows=await cashFetch('treasury',d,d),I=rows.filter(r=>r.inc),O=rows.filter(r=>!r.inc),si=rnd(I.reduce((s,r)=>s+r.total,0)),so=rnd(O.reduce((s,r)=>s+r.total,0)),close=rnd(opening+si-so);
+  DAYR={d,opening,si,so,close,n:rows.length};
+  const tb=(L,t)=>`<h3 style="margin:14px 0 6px">${t} (${L.length})</h3><table><thead><tr><th>#</th><th>الاسم</th><th>الكود</th><th>كود الفاتورة / السريال</th><th>البيان / نوع الإذن</th><th>المحصِّل / المنفِّذ</th><th>المبلغ</th></tr></thead><tbody>${L.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.code)}</td><td>${esc(r.inv)}</td><td>${esc(r.desc)}</td><td>${esc(r.who)}${r.time?' • '+r.time:''}</td><td>${money(r.total)}</td></tr>`).join('')||'<tr><td colspan="7">لا توجد حركات</td></tr>'}</tbody><tfoot><tr><th colspan="6">إجمالي ${t}</th><th>${money(t=='الإيرادات'?si:so)}</th></tr></tfoot></table>`;
+  sh.innerHTML=`<div class="sh"><img src="assets/logo.png" alt=""><div><b>تقرير الخزينة اليومي</b><br><small>${new Date(d+'T00:00:00Z').toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'})} • أعدّه: ${esc(U.full_name)}</small></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0"><div class="stat"><small>رصيد أول اليوم</small><b>${money(opening)}</b></div><div class="stat"><small>إجمالي الإيراد</small><b style="color:#237a4b">${money(si)}</b></div><div class="stat"><small>إجمالي المصروف</small><b style="color:#b3341f">${money(so)}</b></div><div class="stat" style="border-color:var(--gold)"><small>رصيد آخر اليوم</small><b style="color:${close>=0?'#237a4b':'#b3341f'}">${money(close)}</b></div></div>`+tb(I,'الإيرادات')+tb(O,'المصروفات')+`<small style="display:block;margin-top:10px">رصيد آخر اليوم = رصيد أول اليوم + إجمالي الإيراد − إجمالي المصروف. أساس الحساب: رصيد أول مدة ${money(o.amount)} بتاريخ ${fdu(o.open_date)}.</small><div class="rc-sig"><div><div class="ln"></div><b>توقيع محاسب الخزينة</b></div><div><div class="ln"></div><b>توقيع مدير الحسابات</b></div></div>`}catch(e){sh.innerHTML='<div class="msg e">'+esc(errT(e))+'</div>'}}
+function prDay(){if(!DAYR)return msg('لا يوجد تقرير للطباعة — حدّد رصيد أول المدة أولًا',1);let s=document.getElementById('pgd');if(!s){s=document.createElement('style');s.id='pgd';document.head.appendChild(s)}s.textContent='@page{size:A4 portrait;margin:10mm}@media print{.sheet table{font-size:10px}}';window.print()}
+function pdfDay(){if(!DAYR)return msg('لا يوجد تقرير للتحميل — حدّد رصيد أول المدة أولًا',1);sheetToPdf('#dsheet',7,'treasury_daily_'+DAYR.d+'.pdf')}
+// ---------- نهاية رصيد الخزينة ----------
+$('#rdt').valueAsDate=new Date();homeDraw();load();balRefresh();
 </script></body></html>
