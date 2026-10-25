@@ -64,17 +64,28 @@ function lateInfo(inv,monthStr,contract,payDate){const r=_lateInfo(inv,monthStr,
 
 // ===== إيصال دفع / إيداع قابل للطباعة من المتصفح (يظهر فور إنشاء الفاتورة أو من آخر العمليات) =====
 function closeReceipt(){const e=document.getElementById('rcov');if(e)e.remove();document.body.classList.remove('rcp');const s=document.getElementById('rcpg');if(s)s.remove()}
-function showReceipt(d){closeReceipt();const E=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'),isP=d.kind=='pay',u=me();
+// ===== تفقيط: المبلغ كتابةً بالجنيه المصري =====
+function tafqeet(v){v=Math.round(Number(v)*100)/100;if(!isFinite(v)||v<0)return'';const g=Math.floor(v),p=Math.round((v-g)*100);
+ const on=['','واحد','اثنان','ثلاثة','أربعة','خمسة','ستة','سبعة','ثمانية','تسعة','عشرة','أحد عشر','اثنا عشر','ثلاثة عشر','أربعة عشر','خمسة عشر','ستة عشر','سبعة عشر','ثمانية عشر','تسعة عشر'],tn=['','','عشرون','ثلاثون','أربعون','خمسون','ستون','سبعون','ثمانون','تسعون'],hn=['','مائة','مائتان','ثلاثمائة','أربعمائة','خمسمائة','ستمائة','سبعمائة','ثمانمائة','تسعمائة'];
+ const b3=n=>{const h=Math.floor(n/100),r=n%100,o=[];if(h)o.push(hn[h]);if(r)o.push(r<20?on[r]:(r%10?on[r%10]+' و':'')+tn[Math.floor(r/10)]);return o.join(' و')};
+ const grp=(c,one,two,few,many)=>c==1?one:c==2?two:c<=10?b3(c)+' '+few:c==200?'مائتا '+many:b3(c)+' '+many+(c<100?'ًا':'');
+ const parts=[];let n=g;const bl=Math.floor(n/1e9);n%=1e9;const ml=Math.floor(n/1e6);n%=1e6;const th=Math.floor(n/1e3);n%=1e3;
+ if(bl)parts.push(grp(bl,'مليار','ملياران','مليارات','مليار'));if(ml)parts.push(grp(ml,'مليون','مليونان','ملايين','مليون'));if(th)parts.push(grp(th,'ألف','ألفان','آلاف','ألف'));if(n)parts.push(b3(n));
+ const num=parts.join(' و'),r2=n%100,pg=g==0?'':g==1?'جنيه مصري واحد':g==2?'جنيهان مصريان':n==0?num+' جنيه مصري':r2==0?num.replace(/مائتان$/,'مائتا')+' جنيه مصري':r2>=3&&r2<=10?num+' جنيهات مصرية':num+' جنيهًا مصريًا',pp=p==0?'':p==1?'قرش واحد':p==2?'قرشان':p<=10?b3(p)+' قروش':b3(p)+' قرشًا';
+ return 'فقط '+(g==0&&p==0?'صفر جنيه مصري':[pg,pp].filter(Boolean).join(' و'))+' لا غير'}
+function showReceipt(d){closeReceipt();const L=s=>String(s==null?'':s).replace(/[٠-٩]/g,x=>'٠١٢٣٤٥٦٧٨٩'.indexOf(x)).replace(/٬/g,',').replace(/٫/g,'.'),E=s=>L(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'),isP=d.kind=='pay',u=me();
  const rows=[['المورد',d.supplier],['العقد الرئيسي',d.contract],['الشهر التعاقدي',d.month],['نوع الفاتورة',d.typeLabel],['توجيه الفاتورة إلى',d.destLabel],['كود الفاتورة',d.code],['تاريخ الفاتورة',d.date],['المبلغ',d.amount]].concat(d.rows||[],[['صورة الفاتورة الورقية',d.image?'مرفقة':'غير مرفقة'],['البيان',d.desc||'—']]).filter(r=>r[1]!=null&&r[1]!==''),
   wide=r=>r[0]=='البيان'||String(r[1]).length>38,S=rows.filter(r=>!wide(r)),Wd=rows.filter(wide);let tb='';
- for(let k=0;k<S.length;k+=2){const a=S[k],b=S[k+1];tb+=`<tr><th>${E(a[0])}</th><td>${E(a[1])}</td>${b?`<th>${E(b[0])}</th><td>${E(b[1])}</td>`:'<td colspan="2"></td>'}</tr>`}
- Wd.forEach(r=>{tb+=`<tr><th>${E(r[0])}</th><td colspan="3">${E(r[1])}</td></tr>`});
+ const ac=r=>/^(المبلغ|الإجمالي)/.test(r[0])?' class="rc-amt"':'';
+ for(let k=0;k<S.length;k+=2){const a=S[k],b=S[k+1];tb+=`<tr><th>${E(a[0])}</th><td${ac(a)}>${E(a[1])}</td>${b?`<th>${E(b[0])}</th><td${ac(b)}>${E(b[1])}</td>`:'<td colspan="2"></td>'}</tr>`}
+ Wd.forEach(r=>{tb+=`<tr><th>${E(r[0])}</th><td colspan="3"${ac(r)}>${E(r[1])}</td></tr>`});
+ const ks=['الإجمالي المستلم','المبلغ المحصَّل الآن','المبلغ المصروف الآن','المبلغ المحصَّل','المبلغ المصروف','المبلغ المراد دفعه الآن'],pk=ks.map(k=>(d.rows||[]).find(r=>r[0]==k)).find(Boolean)||['المبلغ',d.amount],pv=parseFloat(L(pk[1]).replace(/[^\d.]/g,'')),words=isFinite(pv)?tafqeet(pv):'';
  const o=document.createElement('div');o.id='rcov';o.className='rc-ov';
  o.innerHTML=`<div class="rc-bar"><b>${E(d.banner||'')}</b><div><button class="b s" onclick="window.print()">طباعة الإيصال</button> <button class="b s g" onclick="closeReceipt()">إغلاق</button></div></div>
 <div class="rc-sheet">${d.done?`<div class="rc-wm">${isP?'تم الصرف':'تم الإيداع'}</div>`:''}<div class="rc-h"><img src="assets/logo.png" alt=""><div><small>نظام متابعة مدفوعات الموردين والمقاولين</small><div class="rc-t">${isP?'إيصال دفع':'إيصال إيداع'}</div></div><div class="rc-n">رقم: ${E(d.code)}</div></div>
-<table class="rc-tb">${tb}</table>
+<table class="rc-tb">${tb}</table>${words?`<div class="rc-w"><b>المبلغ كتابةً:</b> ${E(words)}${pk[0]!='المبلغ'?` <small>(${E(pk[0])})</small>`:''}</div>`:''}
 <div class="rc-sig"><div><div class="ln"></div><b>${d.src=='treasury'?'توقيع محاسب الخزينة':'توقيع مدير الحسابات'}</b></div><div><div class="ln"></div><b>توقيع المستلم</b></div></div>
-<div class="rc-f">أُعدّ بواسطة: ${E(u?u.full_name:'')} • تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</div></div>`;
+<div class="rc-f">أُعدّ بواسطة: ${E(u?u.full_name:'')} • تاريخ الطباعة: ${new Date().toLocaleDateString('en-GB')}</div></div>`;
  document.body.appendChild(o);document.body.classList.add('rcp');const s=document.createElement('style');s.id='rcpg';s.textContent='@page{size:A4 portrait;margin:8mm}';document.head.appendChild(s);o.scrollTop=0}
 
 // ===== كود الفاتورة التلقائي: E001 للدفع/الصرف، D001 للإيراد/الإيداع (قابل للتعديل) =====
