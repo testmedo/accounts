@@ -129,18 +129,29 @@ ${cfg.choose?`<details style="margin-top:10px"><summary>اختيار الحقو�
  const fv=(r,k)=>k=='d'?fdu(r.d):k=='amount'||k=='total'?money(r[k]):k=='fee'?(r.fee?money(r.fee):''):E(r[k]);
  function paint(){const F=fl(),R=Sx.rows,inc=R.filter(r=>r.inc),out=R.filter(r=>!r.inc);
   sh.innerHTML=`<div class="sh"><img src="assets/logo.png" alt=""><div><b>${cfg.title}</b><br><small>${Sx.a==Sx.b?fdu(Sx.a):fdu(Sx.a)+' ← '+fdu(Sx.b)} • أعدّه: ${E(me().full_name)}</small></div></div>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0"><div class="stat"><small>عدد الحركات</small><b>${R.length}</b></div><div class="stat"><small>إجمالي الإيراد (${inc.length})</small><b style="color:#237a4b">${money(sm(inc,'total'))}</b></div><div class="stat"><small>إجمالي المصروف (${out.length})</small><b style="color:#b3341f">${money(sm(out,'total'))}</b></div></div>`+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0"><div class="stat"><small>عدد الحركات</small><b>${R.length}</b></div><div class="stat"><small>إجمالي الإيراد (${inc.length})</small><b style="color:#237a4b">${money(sm(inc,'total'))}</b></div><div class="stat"><small>إجمالي المصروف (${out.length})</small><b style="color:#b3341f">${money(sm(out,'total'))}</b></div>${Sx.bl&&Sx.bl.open!=null?`<div class="stat"><small>رصيد أول ${Sx.a==Sx.b?'اليوم':'الفترة'}</small><b>${money(Sx.bl.open)}</b></div><div class="stat" style="border-color:var(--gold)"><small>رصيد آخر ${Sx.a==Sx.b?'اليوم':'الفترة'}${Sx.b==today()?' (حتى الآن)':''}</small><b>${money(Sx.bl.close)}</b></div>`:(Sx.bl&&Sx.bl.none?'<div class="stat"><small>رصيد الخزينة</small><b style="font-size:.9rem">لا يوجد رصيد أول مدة قبل هذا التاريخ</b></div>':'')}</div>`+
   (F.length?`<table><thead><tr>${F.map(([,l])=>`<th>${l}</th>`).join('')}</tr></thead><tbody>${R.map(r=>`<tr>${F.map(([k])=>`<td>${fv(r,k)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${F.length}">لا توجد حركات في هذه الفترة</td></tr>`}</tbody></table>`:'<div class="msg noprint">اختر حقلًا واحدًا على الأقل</div>')}
  async function run(){const [a,b]=rng(),tk=++Sx.tk;Sx.rows=[];if(!a||!b){sh.innerHTML='<div class="msg noprint">حدّد التاريخ</div>';return}sh.innerHTML='<div class="msg">جارٍ التحميل…</div>';
-  try{const R=await cashFetch(cfg.dest,a,b);if(tk!=Sx.tk)return;Sx.rows=R;Sx.a=a;Sx.b=b;paint()}catch(e){if(tk==Sx.tk)sh.innerHTML='<div class="msg e">'+E(errT(e))+'</div>'}}
+  try{const R=await cashFetch(cfg.dest,a,b);let bl=null;if(cfg.bal){try{const ops=await api(OPQ),[x,y]=await Promise.all([trBal(a,ops),trBal(b,ops)]);bl=(x&&y)?{open:x.open,close:y.close}:{none:true}}catch(e){bl=null}}if(tk!=Sx.tk)return;Sx.rows=R;Sx.bl=bl;Sx.a=a;Sx.b=b;paint()}catch(e){if(tk==Sx.tk)sh.innerHTML='<div class="msg e">'+E(errT(e))+'</div>'}}
  q('p').querySelectorAll('button').forEach(bt=>bt.onclick=()=>{Sx.p=bt.dataset.v;q('p').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==bt));q('wd').classList.toggle('hide',Sx.p!='pday');q('wm').classList.toggle('hide',Sx.p!='month');q('wr').classList.toggle('hide',Sx.p!='range');run()});
  ['d1','m1','r1','r2'].forEach(k=>q(k).oninput=run);
  if(cfg.choose)q('f').querySelectorAll('input').forEach(c=>c.onchange=()=>{c.checked?Sx.f.add(c.dataset.k):Sx.f.delete(c.dataset.k);paint()});
  const nm=()=>(cfg.file||'report')+'_'+Sx.a+(Sx.b!=Sx.a?'_'+Sx.b:'');
  q('xl').onclick=()=>{const F=fl(),R=Sx.rows;if(!R.length)return msg('لا توجد بيانات لتحميلها',1);if(!F.length)return msg('اختر حقلًا واحدًا على الأقل',1);
   const rows=R.map(r=>{const o={};F.forEach(([k,l])=>o[l]=r[k]);return o}),tk=F.find(([k])=>k=='total')||F.find(([k])=>k=='amount')||F[F.length-1],c0=F[0][1];
-  rows.push({});rows.push({[c0]:'إجمالي الإيراد',[tk[1]]:sm(R.filter(r=>r.inc),'total')});rows.push({[c0]:'إجمالي المصروف',[tk[1]]:sm(R.filter(r=>!r.inc),'total')});
+  rows.push({});rows.push({[c0]:'إجمالي الإيراد',[tk[1]]:sm(R.filter(r=>r.inc),'total')});rows.push({[c0]:'إجمالي المصروف',[tk[1]]:sm(R.filter(r=>!r.inc),'total')});if(Sx.bl&&Sx.bl.open!=null){rows.push({[c0]:'رصيد أول الفترة',[tk[1]]:Sx.bl.open});rows.push({[c0]:'رصيد آخر الفترة',[tk[1]]:Sx.bl.close})}
   const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();ws['!cols']=F.map(([k])=>({wch:k=='name'||k=='desc'||k=='contract'?30:k=='inv'||k=='college'?22:14}));wb.Workbook={Views:[{RTL:true}]};XLSX.utils.book_append_sheet(wb,ws,'التقرير');XLSX.writeFile(wb,nm()+'.xlsx');msg('تم تحميل ملف Excel ('+R.length+' حركة)')};
  q('pdf').onclick=()=>{if(!Sx.rows.length)return msg('لا توجد بيانات لتحميلها',1);if(!fl().length)return msg('اختر حقلًا واحدًا على الأقل',1);sheetToPdf('#'+id+'sh',fl().length,nm()+'.pdf')};
  if(cfg.print)q('pr').onclick=()=>{if(!Sx.rows.length)return msg('لا توجد بيانات للطباعة',1);let s=document.getElementById('pgc');if(!s){s=document.createElement('style');s.id='pgc';document.head.appendChild(s)}s.textContent='@page{size:A4 landscape;margin:8mm}@media print{.sheet table{font-size:9px}}';window.print()};
  run()}
+
+// ===== رصيد الخزينة (مشترك): رصيد أول المدة + إيراد الخزينة − مصروفها المنفَّذ، دون التحويلات =====
+const OPQ='treasury_opening?select=*,cr:users!treasury_opening_created_by_fkey(full_name)&order=open_date.desc,created_at.desc';
+const addDays=(s,n)=>{const d=new Date(s+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+async function sumQ(a,b){let q='payments?status=eq.approved&select=amount,fee,invoices!inner(type,dest)&invoices.dest=eq.treasury&order=created_at';if(a)q+='&created_at=gte.'+a+'T00:00:00Z';if(b)q+='&created_at=lte.'+b+'T23:59:59Z';
+ let inc=0,exp=0;(await apiAll(q)).forEach(p=>{if(p.invoices.type=='income')inc+=+p.amount+(+p.fee||0);else exp+=+p.amount});return{inc:rnd(inc),exp:rnd(exp)}}
+const TRC={};
+// رصيد أول اليوم d ورصيد آخره (بعد حركات اليوم حتى الآن). يعيد null إن لم يوجد رصيد أول مدة قبل التاريخ
+async function trBal(d,ops){ops=ops||await api(OPQ);const o=ops.find(x=>x.open_date<=d);if(!o)return null;const y=addDays(d,-1),k=o.id+'|'+d;let s=TRC[k];
+ if(!s||Date.now()-s.at>120000){s={at:Date.now(),...(o.open_date<=y?await sumQ(o.open_date,y):{inc:0,exp:0})};TRC[k]=s}
+ const day=await sumQ(d,d),open=rnd(+o.amount+s.inc-s.exp);return{o,open,inc:day.inc,exp:day.exp,close:rnd(open+day.inc-day.exp)}}
