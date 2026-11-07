@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الخزينة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=30"><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head><body>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=33"><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div><div id="live" class="live hide noprint"></div>
 <div id="home" class="cards"></div>
 
@@ -22,10 +22,11 @@
 <div class="card noprint hide" id="opl"></div>
 <div class="card frm noprint"><h2>التقرير اليومي للخزينة</h2><label>اليوم</label><input id="rd" type="date" oninput="dayRep()"><div class="grid"><button class="b" onclick="prDay()">طباعة التقرير</button><button class="b g" onclick="pdfDay()">تحميل PDF</button></div></div>
 <div class="sheet" id="dsheet"></div></section>
+<section id="p6" class="hide"><button class="back noprint" onclick="tab(0)">→ رجوع للتبويبات</button><div id="bsw"></div></section>
 <section id="p4" class="hide"><button class="back noprint" onclick="tab(0)">→ رجوع للتبويبات</button><div id="cwt"></div></section></main>
 <datalist id="dlc"></datalist>
 <div id="ov" class="ov hide"><div class="md"><h2><span id="mt"></span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div><div class="grid"><button class="b" id="ms">تأكيد</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
-<script src="js/app.js?v=30"></script><script>
+<script src="js/app.js?v=33"></script><script>
 const U=guard(['treasury','manager','admin']);
 let INV=[],CM={},SP={},REC=[],TAB=0,FIL='all',PREV=null,MINE=new Map(),busy=false,pend=false,lt;
 const Q='invoices?select=*,suppliers(name,code,phone),contracts(title,late_rate,grace_day,late_fee),contract_months(month),cr:users!invoices_created_by_fkey(full_name,role),payments(id,amount,status,created_at,fee)&dest=eq.treasury&apv=eq.approved&src=is.null&order=created_at.desc';
@@ -36,9 +37,9 @@ function flash(t){const l=$('#live');l.textContent=t;l.className='live';clearTim
 function showM(t,h,l,fn){$('#mt').textContent=t;$('#mb').innerHTML=h;$('#ms').textContent=l;$('#me').className='msg e hide';$('#ms').onclick=async()=>{try{await fn();cl()}catch(e){$('#me').textContent=errT(e).replace(/^خطأ: /,'');$('#me').className='msg e'}};$('#ov').className='ov'}
 // ---------- التبويبات: صفحة رئيسية ببطاقات، وكل تبويب يفتح وحده مع زر رجوع ----------
 function homeDraw(){const o=INV.filter(i=>rem(i)>0.001),inc=o.filter(isIn).length,out=o.length-inc;
- $('#home').innerHTML=card('wallet','المستحقات',PREV?`${inc} للتحصيل • ${out} للصرف`:'جارٍ التحميل…',"tab(1)")+card('receipt','قيد جديد','إيداع أو صرف مباشر دون اعتماد',"tab(2)")+card('list','آخر العمليات','آخر 100 عملية منفَّذة مع طباعة الإيصال',"tab(3)")+card('chart','تقرير الخزينة','كل الحركات (طلاب وموردون وموظفون) — اختر الحقول ثم Excel / PDF / طباعة',"tab(4)")+card('coin','رصيد الخزينة',BALTXT||'الرصيد الحالي وتقرير اليوم (إيراد ومصروف) للطباعة',"tab(5)")}
+ $('#home').innerHTML=card('wallet','المستحقات',PREV?`${inc} للتحصيل • ${out} للصرف`:'جارٍ التحميل…',"tab(1)")+card('receipt','قيد جديد','إيداع أو صرف مباشر دون اعتماد',"tab(2)")+card('list','آخر العمليات','آخر 100 عملية منفَّذة مع طباعة الإيصال',"tab(3)")+card('chart','تقرير الخزينة','كل الحركات (طلاب وموردون وموظفون) — اختر الحقول ثم Excel / PDF / طباعة',"tab(4)")+card('coin','رصيد الخزينة',BALTXT||'الرصيد الحالي وتقرير اليوم (إيراد ومصروف) للطباعة',"tab(5)")+card('chart','ملخص أرصدة الخزينة','يوميًا: رصيد أول اليوم • مدين • دائن • رصيد آخر اليوم — Excel / PDF',"tab(6)")}
 function setCode(f){return fillCode($('#rcode'),$('#rk').value=='out'?'E':'D',f)}
-function tab(n){if(n==2)setCode();TAB=n;[1,2,3,4,5].forEach(x=>$('#p'+x).classList.toggle('hide',x!=n));$('#home').classList.toggle('hide',n!=0);$('#msg').className='hide';scrollTo(0,0);if(n==3)loadRec();if(n==5){$('#opf').classList.toggle('hide',!CAN);$('#rd').value=$('#rd').value||today();balRefresh(true);dayRep()}if(n==4)cashWidget($('#cwt'),{id:'tcr',dest:'treasury',bal:true,title:'تقرير الخزينة',hint:'كل حركات الخزينة المنفَّذة: إيرادات الطلاب (المرفوعة من Excel) والموردين والموظفين، دون التحويلات. اختر الحقول ثم حمّل أو اطبع.',choose:true,print:true,file:'treasury_report'});if(n==0)homeDraw()}
+function tab(n){if(n==2)setCode();TAB=n;[1,2,3,4,5,6].forEach(x=>$('#p'+x).classList.toggle('hide',x!=n));$('#home').classList.toggle('hide',n!=0);$('#msg').className='hide';scrollTo(0,0);if(n==3)loadRec();if(n==6)balSummary($('#bsw'),{id:'tbs'});if(n==5){$('#opf').classList.toggle('hide',!CAN);$('#rd').value=$('#rd').value||today();balRefresh(true);dayRep()}if(n==4)cashWidget($('#cwt'),{id:'tcr',dest:'treasury',bal:true,title:'تقرير الخزينة',hint:'كل حركات الخزينة المنفَّذة: إيرادات الطلاب (المرفوعة من Excel) والموردين والموظفين، دون التحويلات. اختر الحقول ثم حمّل أو اطبع.',choose:true,print:true,file:'treasury_report'});if(n==0)homeDraw()}
 document.querySelectorAll('#fl button').forEach(b=>b.onclick=()=>{FIL=b.dataset.v;document.querySelectorAll('#fl button').forEach(x=>x.classList.toggle('on',x==b));draw()});
 // ---------- تحميل مباشر (يتجدد تلقائيًا لتظهر عمليات بقية شاشات الخزينة فورًا) ----------
 async function load(){if(busy){pend=true;return}busy=true;try{const inv=await apiAll(Q),cur=new Map(inv.map(i=>[i.id,rem(i)]));
