@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>المحاسبة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=32">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=33">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div id="home" class="cards"></div>
@@ -39,6 +39,8 @@
 <div class="grid"><button class="b" onclick="xlM()">تحميل Excel</button><button class="b g" onclick="pdfM()">تحميل PDF</button></div><button class="b s" style="margin-top:8px;background:#4a5f66" onclick="prM()">طباعة</button></div>
 <div class="sheet" id="msheet"></div></section>
 
+<section id="bsum" class="hide"><button class="back noprint" onclick="go()">→ رجوع</button><div id="bsbox"></div></section>
+
 <section id="open" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>فواتير بها مبالغ متبقية</h2><div id="olist"></div></div></section>
 <section id="edit" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>فواتير لم تُعتمد أو تُحصَّل بعد (قابلة للتعديل)</h2><div id="elist"></div></div></section>
 <section id="imp" class="hide"><button class="back" onclick="go()">→ رجوع</button><div class="card"><h2>رفع معاملات من Excel</h2><small>يدعم الملف: (١) «كشف حساب المورد» كما يصدر من النظام، (٢) «مدفوعات وإيرادات الموظف»، (٣) نموذج الاستيراد (الاسم والكود المرجعي للفاتورة والنوع والمبلغ والتاريخ فقط مطلوبة؛ كود المورد والهاتف والمجال والعقد اختيارية). تُقرأ التواريخ بأي صيغة. مدفوعات = مدفوع إلى، إيداعات = إيراد من، فاتورة = غير مدفوعة حتى اعتماد الدفع أو الحذف. تظهر مراجعة قبل الحفظ، والمكرر لا يُرفع.</small>
@@ -47,12 +49,12 @@
 </main>
 <datalist id="dls"></datalist><datalist id="dlc"></datalist>
 <div id="ov" class="ov hide"><div class="md"><h2><span id="mt"></span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div><div class="grid"><button class="b" id="ms">حفظ</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
-<script src="js/app.js?v=32"></script><script src="js/importer.js?v=32"></script><script>
+<script src="js/app.js?v=33"></script><script src="js/importer.js?v=33"></script><script>
 const U=guard(['accountant','manager','admin']);let S=[],C=[],I=[],MON=[],SM={},CM={},curC=null;
 const iso=d=>new Date(d).toISOString().slice(0,10),cl=()=>$('#ov').className='ov hide',noApp=i=>!(i.payments||[]).some(p=>p.status=='approved'),cname=c=>(S.find(s=>s.id==c.supplier_id)?.name||'')+' — '+c.title;
 const who=i=>{const n=[...new Set((i.payments||[]).filter(p=>p.status=='approved').map(p=>p.pc?.full_name).filter(Boolean))];return `<small>التاريخ: ${fdate(i.created_at)} • أنشأها: ${i.cr?.full_name||'—'}</small>${n.length?`<small>دفعها: ${n.join('، ')}</small>`:''}`};
 function showM(t,h,l,fn){$('#mt').textContent=t;$('#mb').innerHTML=h;$('#ms').textContent=l;$('#me').className='msg e hide';$('#ms').onclick=async()=>{try{await fn();cl()}catch(e){$('#me').textContent=errT(e).replace(/^خطأ: /,'');$('#me').className='msg e'}};$('#ov').className='ov'}
-function go(id){if(id=='inv')setCode();if(id=='mine')drawMine();if(id=='mrep')runM();['home','sup','con','mon','inv','open','edit','imp','list','mine','mrep'].forEach(x=>$('#'+x).classList.toggle('hide',x!=(id||'home')));$('#msg').className='hide';scrollTo(0,0)}
+function go(id){if(id=='inv')setCode();if(id=='mine')drawMine();if(id=='mrep')runM();if(id=='bsum')balSummary($('#bsbox'),{id:'abs'});['home','sup','con','mon','inv','open','edit','imp','list','mine','mrep','bsum'].forEach(x=>$('#'+x).classList.toggle('hide',x!=(id||'home')));$('#msg').className='hide';scrollTo(0,0)}
 async function load(){[S,C,I,MON]=await Promise.all([apiAll('suppliers?order=name'),apiAll('contracts?select=*&order=created_at.desc'),apiAll('invoices?select=*,suppliers(name),contracts(title),cr:users!invoices_created_by_fkey(full_name),payments(id,amount,fee,note,status,pc:users!payments_created_by_fkey(full_name))&src=is.null&order=created_at.desc'),apiAll('contract_months?select=*&order=month')]);
  try{PRD=await apiAll('contract_periods?select=*&order=period_no')}catch(e){PRD=[]}
  SM={};S.forEach(s=>{if(s.kind!='student')SM[s.name+' ('+s.code+')']=s.id});CM={};C.forEach(c=>CM[cname(c)]=c.id);
@@ -221,6 +223,6 @@ ${ci.rem>0.005?`<label class="ck"><input id="r4" type="checkbox">ترحيل ال
   try{const r=await api('contracts?id=eq.'+id,'PATCH',{start_date:s,end_date:e2,agreed_amount:v,carried_amount:carry});if(!r.length)throw Error('لم يتم التحديث')}catch(err){try{await api('contract_periods?id=eq.'+hr.id,'DELETE')}catch(_){}throw err}
   await audit('فترة تعاقدية جديدة على العقد','contracts',id,id,{'الفترة':(c.start_date||'—')+' ← '+c.end_date,'القيمة':c.agreed_amount,'المتبقي':ci.rem},{'الفترة':s+' ← '+e2,'القيمة':v,'مرحَّل من السابقة':carry},$('#r5').value.trim());
   await load();msg('تم فتح الفترة التعاقدية الجديدة'+(carry?' وترحيل '+money(carry)+' إلى قيمتها':''))})}
-$('#home').innerHTML=card('user','مورد جديد','إضافة مورد أو مقاول',"go('sup')")+card('folder','عقد رئيسي جديد','اسم وبيان وفترة وقيمة',"go('con')")+card('cal','العقود الشهرية','أشهر العقد وقيمها والتقسيم التلقائي',"go('mon')")+card('receipt','فاتورة فرعية','دفع / إيداع / فاتورة / تحصيل للخزينة',"go('inv')")+card('wallet','دفع المتبقي','فواتير دُفع جزء منها',"go('open')")+card('edit','تعديل فاتورة','قبل الاعتماد أو التحصيل',"go('edit')")+card('list','فواتيري','ما أنشأته: اليوم أو الأسبوع أو الشهر مع التعديل',"go('mine')")+card('chart','المتبقي من العقود الشهرية','الشهر الحالي أو فترة — Excel / PDF',"go('mrep')")+card('up','رفع Excel','استيراد معاملات من ملف',"go('imp')")+card('list','الموردون والعقود','بحث واستعراض',"go('list')")+card('chart','كشف الحساب والتقارير','عرض وتحميل PDF أو Excel',"location.href='report.html'");
+$('#home').innerHTML=card('user','مورد جديد','إضافة مورد أو مقاول',"go('sup')")+card('folder','عقد رئيسي جديد','اسم وبيان وفترة وقيمة',"go('con')")+card('cal','العقود الشهرية','أشهر العقد وقيمها والتقسيم التلقائي',"go('mon')")+card('receipt','فاتورة فرعية','دفع / إيداع / فاتورة / تحصيل للخزينة',"go('inv')")+card('wallet','دفع المتبقي','فواتير دُفع جزء منها',"go('open')")+card('edit','تعديل فاتورة','قبل الاعتماد أو التحصيل',"go('edit')")+card('list','فواتيري','ما أنشأته: اليوم أو الأسبوع أو الشهر مع التعديل',"go('mine')")+card('chart','المتبقي من العقود الشهرية','الشهر الحالي أو فترة — Excel / PDF',"go('mrep')")+card('coin','ملخص أرصدة الخزينة','يوميًا: رصيد أول اليوم • مدين • دائن • رصيد آخر اليوم — Excel / PDF',"go('bsum')")+card('up','رفع Excel','استيراد معاملات من ملف',"go('imp')")+card('list','الموردون والعقود','بحث واستعراض',"go('list')")+card('chart','كشف الحساب والتقارير','عرض وتحميل PDF أو Excel',"location.href='report.html'");
 $('#idate').valueAsDate=new Date();tchg();load();
 </script></body></html>
