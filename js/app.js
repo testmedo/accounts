@@ -155,3 +155,43 @@ const TRC={};
 async function trBal(d,ops){ops=ops||await api(OPQ);const o=ops.find(x=>x.open_date<=d);if(!o)return null;const y=addDays(d,-1),k=o.id+'|'+d;let s=TRC[k];
  if(!s||Date.now()-s.at>120000){s={at:Date.now(),...(o.open_date<=y?await sumQ(o.open_date,y):{inc:0,exp:0})};TRC[k]=s}
  const day=await sumQ(d,d),open=rnd(+o.amount+s.inc-s.exp);return{o,open,inc:day.inc,exp:day.exp,close:rnd(open+day.inc-day.exp)}}
+
+// ===== ملخص أرصدة الخزينة: يوميًا (رصيد أول اليوم • مدين=الإيداع • دائن=المدفوع • رصيد نهاية اليوم) — عمليات الخزينة فقط =====
+function bsCalc(ops,s,b,P,startOpen){const M={};P.forEach(p=>{const d=p.created_at.slice(0,10),m=M[d]||(M[d]={inc:0,exp:0});if(p.invoices.type=='income')m.inc+=+p.amount+(+p.fee||0);else m.exp+=+p.amount});
+ let bal=startOpen,prev=ops.find(x=>x.open_date<=s);const rows=[];
+ for(let d=s;d<=b;d=addDays(d,1)){const eff=ops.find(x=>x.open_date<=d);let reset=false;if(d>s&&eff.id!==prev.id){bal=+eff.amount;reset=true}prev=eff;const m=M[d]||{inc:0,exp:0},open=rnd(bal),inc=rnd(m.inc),exp=rnd(m.exp),close=rnd(open+inc-exp);rows.push({d,open,inc,exp,close,reset,isOpen:eff.open_date==d});bal=close}
+ return rows}
+function balSummary(box,cfg){
+ const E=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),q=s=>box.querySelector('[data-r='+s+']'),Sx={p:'month',tk:0,D:null},pad=n=>String(n).padStart(2,'0'),id=cfg.id;
+ box.innerHTML=`<div class="card frm noprint"><h2>ملخص أرصدة الخزينة</h2><small>أرصدة الخزينة يومًا بيوم (عمليات الخزينة فقط، دون التحويلات): رصيد أول اليوم، مدين (إجمالي الإيداع)، دائن (إجمالي المدفوع)، رصيد نهاية اليوم.</small>
+<div class="tabs" data-r="p" style="margin-top:10px"><button data-v="month" class="on">شهر محدد</button><button data-v="range">فترة من / إلى</button></div>
+<div data-r="wm"><label>الشهر</label><input data-r="m1" type="month" value="${today().slice(0,7)}"></div>
+<div data-r="wr" class="grid hide"><div><label>من</label><input data-r="r1" type="date" value="${today().slice(0,8)}01"></div><div><label>إلى</label><input data-r="r2" type="date" value="${today()}"></div></div>
+<div class="grid"><button class="b" data-r="xl">تحميل Excel</button><button class="b g" data-r="pdf">تحميل PDF</button></div><button class="b s" data-r="pr" style="margin-top:8px;background:#4a5f66">طباعة</button></div>
+<div class="sheet" data-r="sh" id="${id}sh"></div>`;
+ const sh=q('sh'),rng=()=>{if(Sx.p=='month'){const v=q('m1').value;return v?[v+'-01',v+'-'+pad(new Date(+v.slice(0,4),+v.slice(5,7),0).getDate())]:['','']}return[q('r1').value,q('r2').value]};
+ const wd=d=>new Date(d+'T00:00:00Z').toLocaleDateString('ar-EG',{weekday:'long',timeZone:'UTC'});
+ async function run(){let [a,b]=rng();const tk=++Sx.tk;Sx.D=null;if(b&&b>today())b=today();if(!a||!b||b<a){sh.innerHTML='<div class="msg noprint">'+(!a||!b?'حدّد الفترة':a>today()?'الفترة في المستقبل':'تاريخ النهاية قبل البداية')+'</div>';return}
+  if((new Date(b)-new Date(a))/864e5>1100){sh.innerHTML='<div class="msg noprint">الفترة أطول من 3 سنوات — قلّصها</div>';return}
+  sh.innerHTML='<div class="msg">جارٍ التحميل…</div>';
+  try{const ops=await api(OPQ),first=[...ops].sort((x,y)=>x.open_date<y.open_date?-1:1).find(x=>x.open_date<=b);
+   if(!first){if(tk==Sx.tk)sh.innerHTML='<div class="msg">لا يوجد رصيد أول مدة مسجّل قبل نهاية هذه الفترة. يحدده مدير الحسابات من «رصيد الخزينة».</div>';return}
+   const s=a<first.open_date?first.open_date:a,st=await trBal(s,ops);let qq='payments?status=eq.approved&select=amount,fee,created_at,invoices!inner(type,dest)&invoices.dest=eq.treasury&order=created_at&created_at=gte.'+s+'T00:00:00Z&created_at=lte.'+b+'T23:59:59Z';
+   const P=await apiAll(qq);if(tk!=Sx.tk)return;const rows=bsCalc(ops,s,b,P,st.open),eff=ops.find(x=>x.open_date<=s);
+   Sx.D={a,b,s,rows,eff,tin:rnd(rows.reduce((t,r)=>t+r.inc,0)),tex:rnd(rows.reduce((t,r)=>t+r.exp,0)),o:rows[0].open,c:rows[rows.length-1].close,multi:rows.some(r=>r.reset)};paint()}catch(e){if(tk==Sx.tk)sh.innerHTML='<div class="msg e">'+E(errT(e))+'</div>'}}
+ function paint(){const D=Sx.D;if(!D)return;
+  sh.innerHTML=`<div class="sh"><img src="assets/logo.png" alt=""><div><b>ملخص أرصدة الخزينة</b><br><small>${fdu(D.s)} ← ${fdu(D.b)} • أعدّه: ${E(me().full_name)}</small></div></div>
+<div class="msg" style="margin:8px 0"><b>الرصيد الافتتاحي الرئيسي:</b> ${money(D.eff.amount)} بتاريخ ${fdu(D.eff.open_date)}${D.s!=D.a?'<br><small>بدأ التقرير من تاريخ الرصيد الافتتاحي لأن الفترة المطلوبة تسبقه</small>':''}${D.multi?'<br><small>تخلل الفترة رصيد افتتاحي جديد (موضَّح في الجدول)</small>':''}</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0"><div class="stat"><small>رصيد أول الفترة</small><b>${money(D.o)}</b></div><div class="stat"><small>إجمالي المدين (الإيداع)</small><b style="color:#237a4b">${money(D.tin)}</b></div><div class="stat"><small>إجمالي الدائن (المدفوع)</small><b style="color:#b3341f">${money(D.tex)}</b></div><div class="stat" style="border-color:var(--gold)"><small>رصيد آخر الفترة</small><b>${money(D.c)}</b></div></div>
+<table><thead><tr><th>التاريخ</th><th>اليوم</th><th>رصيد أول اليوم</th><th>مدين (إجمالي الإيداع)</th><th>دائن (إجمالي المدفوع)</th><th>رصيد نهاية اليوم</th></tr></thead><tbody>${D.rows.map(r=>`<tr><td>${fdu(r.d)}${r.reset||r.isOpen?'<small style="display:block">رصيد افتتاحي</small>':''}</td><td>${wd(r.d)}</td><td>${money(r.open)}</td><td>${r.inc?money(r.inc):'—'}</td><td>${r.exp?money(r.exp):'—'}</td><td><b>${money(r.close)}</b></td></tr>`).join('')}</tbody>
+<tfoot><tr><th colspan="2">الإجماليات</th><th>${money(D.o)}</th><th>${money(D.tin)}</th><th>${money(D.tex)}</th><th>${money(D.c)}</th></tr></tfoot></table>
+<div class="rc-sig"><div><div class="ln"></div><b>توقيع مراجع الحسابات</b></div><div><div class="ln"></div><b>توقيع مدير الحسابات</b></div></div>`}
+ q('p').querySelectorAll('button').forEach(bt=>bt.onclick=()=>{Sx.p=bt.dataset.v;q('p').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==bt));q('wm').classList.toggle('hide',Sx.p!='month');q('wr').classList.toggle('hide',Sx.p!='range');run()});
+ ['m1','r1','r2'].forEach(k=>q(k).oninput=run);
+ const nm=()=>'treasury_balances_'+(Sx.D?Sx.D.s+'_'+Sx.D.b:'');
+ q('xl').onclick=()=>{const D=Sx.D;if(!D)return msg('لا توجد بيانات لتحميلها',1);
+  const aoa=[['ملخص أرصدة الخزينة'],['الفترة',D.s,D.b],['الرصيد الافتتاحي الرئيسي',D.eff.amount,D.eff.open_date],[],['التاريخ','اليوم','رصيد أول اليوم','مدين (إجمالي الإيداع)','دائن (إجمالي المدفوع)','رصيد نهاية اليوم'],...D.rows.map(r=>[r.d,wd(r.d),r.open,r.inc,r.exp,r.close]),[],['الإجماليات','',D.o,D.tin,D.tex,D.c],[],['توقيع مراجع الحسابات','','','توقيع مدير الحسابات']];
+  const ws=XLSX.utils.aoa_to_sheet(aoa),wb=XLSX.utils.book_new();ws['!cols']=[14,12,16,22,22,18].map(w=>({wch:w}));wb.Workbook={Views:[{RTL:true}]};XLSX.utils.book_append_sheet(wb,ws,'ملخص الأرصدة');XLSX.writeFile(wb,nm()+'.xlsx');msg('تم تحميل ملف Excel ('+D.rows.length+' يوم)')};
+ q('pdf').onclick=()=>{if(!Sx.D)return msg('لا توجد بيانات لتحميلها',1);sheetToPdf('#'+id+'sh',6,nm()+'.pdf')};
+ q('pr').onclick=()=>{if(!Sx.D)return msg('لا توجد بيانات للطباعة',1);let s=document.getElementById('pgb');if(!s){s=document.createElement('style');s.id='pgb';document.head.appendChild(s)}s.textContent='@page{size:A4 portrait;margin:10mm}@media print{.sheet table{font-size:10px}}';window.print()};
+ run()}
