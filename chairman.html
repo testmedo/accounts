@@ -8,7 +8,7 @@
 <div id="home"><div id="tb"></div><div class="sec">الاعتمادات</div><div class="cards" id="pbA"></div><div class="sec">التقارير والمتابعة</div><div class="cards" id="pbB"></div></div>
 <div id="vw" class="hide"><div class="vhd"><button class="back" onclick="goBack()">→ رجوع</button><b id="vt"></b></div>
 <div id="pl" class="hide"></div><div id="pi" class="hide"></div><div id="rp" class="hide"></div><div id="cw" class="hide"></div><div id="ac" class="hide"></div><div id="res" class="hide"></div><div id="det" class="hide"></div></div></main>
-<script src="js/app.js?v=37"></script><script>
+<script src="js/app.js?v=38"></script><script>
 guard(['chairman','manager','admin']);let t,CWK=null,ALLP=false;
 const PANELS=['pl','pi','rp','cw','ac','res','det'];
 function ov(title){PANELS.forEach(x=>$('#'+x).className='hide');$('#home').classList.add('hide');$('#vw').className='';$('#vt').textContent=title||'';scrollTo(0,0)}
@@ -53,7 +53,7 @@ $('#more').innerHTML='<h2 style="margin-top:14px">فواتير بها باقٍ</
 async function cnt(){const n=(await api('payments?status=eq.pending&select=id')).length;let m=0;try{m=(await api('invoices?apv=eq.pending&select=id')).length}catch(e){}
 $('#pbA').innerHTML=card('shield','فواتير الخزينة بانتظار الاعتماد',m?m+' فاتورة — اعتماد أو تعديل المبلغ أو رفض':'لا توجد فواتير بانتظار الاعتماد',"pendInv()")+card('receipt','تحويلات بانتظار الاعتماد',n?n+' طلب — اعتماد أو تعديل المبلغ أو رفض':'لا توجد طلبات حالية',"pend()");
 $('#pbB').innerHTML=card('chart','تقرير سريع','المدفوعات والإيرادات: اليوم أو الأسبوع أو الشهر أو فترة',"repOpen()")+card('wallet','إيراد الخزينة الطبيعي','ما دخل الخزينة وما خرج منها فقط — اليوم أو يوم/شهر/فترة',"cashOpen('treasury')")+card('list','التحويلات','التحويلات المنفَّذة فقط — اليوم أو يوم/شهر/فترة',"cashOpen('accounts')")+card('folder','كشف الحسابات','اختر حسابًا لعرض إجمالي ما دُفع به وفواتيره',"acctOpen()")}
-function cashOpen(k){ov(k=='treasury'?'إيراد الخزينة الطبيعي':'التحويلات');const b=$('#cw');if(CWK==k&&!b.classList.contains('hide')){b.className='hide';CWK=null;return}CWK=k;$('#pl').className='hide';$('#pi').className='hide';$('#rp').className='hide';b.className='';cashWidget(b,{id:'cw'+k,fields:[...CRD,'img'],dest:k,bal:k=='treasury',title:k=='treasury'?'إيراد الخزينة الطبيعي':'التحويلات',hint:k=='treasury'?'المبالغ التي دخلت الخزينة (إيراد) أو خرجت منها (مصروف) فقط، دون أي تحويلات.':'التحويلات المنفَّذة فقط (إيراد ومصروف)، دون حركات الخزينة.',file:k=='treasury'?'treasury_revenue':'transfers'});b.scrollIntoView()}
+function cashOpen(k){ov(k=='treasury'?'إيراد الخزينة الطبيعي':'التحويلات');const b=$('#cw');if(CWK==k&&!b.classList.contains('hide')){b.className='hide';CWK=null;return}CWK=k;$('#pl').className='hide';$('#pi').className='hide';$('#rp').className='hide';b.className='';cashWidget(b,{id:'cw'+k,fields:[...CRD,'img'],split:k=='treasury',dest:k,bal:k=='treasury',title:k=='treasury'?'إيراد الخزينة الطبيعي':'التحويلات',hint:k=='treasury'?'المبالغ التي دخلت الخزينة (إيراد) أو خرجت منها (مصروف) فقط، دون أي تحويلات.':'التحويلات المنفَّذة فقط (إيراد ومصروف)، دون حركات الخزينة.',file:k=='treasury'?'treasury_revenue':'transfers'});b.scrollIntoView()}
 
 const tb=i=>`<span class="bd ${i.type=='income'?'on':''}" style="margin-inline-start:6px;${i.type=='income'?'':'background:#e8f1f0'}">${({pay:'دفع',income:'إيداع',bill:'فاتورة'})[i.type]||''}</span>`;
 const payers=i=>{const n=[...new Set((i.payments||[]).filter(p=>p.status=='approved').map(p=>p.pc?.full_name).filter(Boolean))];return n.length?`<small>دفعها: ${n.join('، ')}</small>`:''};
