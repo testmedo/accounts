@@ -1,5 +1,5 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>إيرادات الطلاب</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=26">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=34">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
 <main><div id="msg" class="hide"></div>
 <div id="home" class="cards"></div>
@@ -13,7 +13,7 @@
 <section id="qs" class="hide"><button class="back" onclick="go()">→ رجوع للتبويبات</button>
 <div class="card frm"><h2>الاستعلام عن طالب</h2><input id="q" placeholder="اكتب كود الطالب أو اسمه أو جزءًا منه" oninput="find()" autocomplete="off">
 <small style="display:block;margin-top:6px">للدفع للطالب (استرداد مثلًا): أنشئ فاتورة من المحاسبة أو قيدًا من الخزينة واختر العقد «اسم الطالب — إيرادات الطالب».</small></div><div id="sr"></div><div id="sd"></div></section></main>
-<script src="js/app.js?v=26"></script><script>
+<script src="js/app.js?v=34"></script><script>
 const U=guard(['treasury','manager','admin']);
 const E=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'),CT='إيرادات الطالب';
 function go(id){['up','qs'].forEach(x=>$('#'+x).classList.toggle('hide',x!=id));$('#home').classList.toggle('hide',!!id);$('#msg').className='hide';scrollTo(0,0)}
@@ -78,8 +78,14 @@ async function doImport(){const P=PL;if(!P||!P.imp.length)return;if(!confirm(`ر
   for(let i=0;i<ns.length;i+=200){msg(`جارٍ إنشاء الطلاب… ${i}/${ns.length}`);const r=await api('suppliers','POST',ns.slice(i,i+200).map(s=>({code:s.code,name:s.name,field:s.college||null,kind:'student',level:s.level||null})));r.forEach(x=>P.sid.set(x.code,x.id));made+=r.length}
   const need=[...new Set(P.imp.map(r=>P.sid.get(r.cd)))].filter(id=>id&&!P.cm.has(id));
   for(let i=0;i<need.length;i+=200){msg(`جارٍ تجهيز حسابات الطلاب… ${i}/${need.length}`);const r=await api('contracts','POST',need.slice(i,i+200).map(id=>({supplier_id:id,title:CT,created_by:U.id})));r.forEach(c=>P.cm.set(c.supplier_id,c.id))}
+  msg('جارٍ تجهيز حسابات إيراد الطلاب…');const acs=await apiAll('accounts?select=*&order=code');let mainA=acs.find(a=>!a.parent_id&&nm(a.name)==nm('إيراد الطلاب'));
+  if(!mainA){let cd='S-REV',k=1;while(acs.some(a=>nm(a.code)==nm(cd)))cd='S-REV-'+(++k);mainA=(await api('accounts','POST',{code:cd,name:'إيراد الطلاب',kind:'revenue',created_by:U.id}))[0];acs.push(mainA)}
+  const types=[...new Set(P.imp.map(r=>r.pt||'غير محدد'))],AM=new Map(),subs=acs.filter(a=>a.parent_id==mainA.id);types.forEach(t=>{const sb=subs.find(a=>nm(a.name)==nm(t));if(sb)AM.set(t,sb.id)});
+  let mx=Math.max(0,...subs.map(a=>{const m=String(a.code).match(/(\d+)$/);return m?+m[1]:0}));
+  for(const t of types.filter(t=>!AM.has(t))){mx++;const r=(await api('accounts','POST',{code:mainA.code+'-'+String(mx).padStart(2,'0'),name:t,parent_id:mainA.id,kind:'revenue',created_by:U.id}))[0];AM.set(t,r.id)}
+  for(const t of types){if(t!='غير محدد')await api('invoices?src=eq.students&account_id=is.null&description=eq.'+encodeURIComponent(t),'PATCH',{account_id:AM.get(t)})}
   for(let i=0;i<P.imp.length;i+=100){const ch=P.imp.slice(i,i+100);msg(`جارٍ رفع الإيرادات… ${done}/${P.imp.length}`);
-   const inv=await api('invoices','POST',ch.map(r=>({contract_id:P.cm.get(P.sid.get(r.cd)),supplier_id:P.sid.get(r.cd),type:'income',dest:'treasury',code:r.sr,amount:r.am,description:r.pt||null,created_by:U.id,created_at:ts(r.cdt||r.pdt),src:'students'}))),by=new Map(ch.map(r=>[nm(r.sr),r]));
+   const inv=await api('invoices','POST',ch.map(r=>({contract_id:P.cm.get(P.sid.get(r.cd)),supplier_id:P.sid.get(r.cd),type:'income',dest:'treasury',code:r.sr,amount:r.am,description:r.pt||null,created_by:U.id,created_at:ts(r.cdt||r.pdt),src:'students',account_id:AM.get(r.pt||'غير محدد')}))),by=new Map(ch.map(r=>[nm(r.sr),r]));
    try{await api('payments','POST',inv.map(v=>{const r=by.get(nm(v.code)),d=r.pdt||r.cdt;return{invoice_id:v.id,amount:r.am,status:'approved',created_by:U.id,approved_by:U.id,created_at:ts(d),decided_at:ts(d),note:['المحصّل: '+(r.who||'—'),r.ptm,r.rs?'سبب تعليق: '+r.rs:''].filter(Boolean).join(' • ')}}))}
    catch(e){try{await api('invoices?id=in.('+inv.map(v=>v.id).join(',')+')','DELETE')}catch(_){}throw e}
    done+=ch.length}

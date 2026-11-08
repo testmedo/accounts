@@ -1,0 +1,30 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الحسابات</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=34"></head><body>
+<main><div id="msg" class="hide"></div>
+<div class="card frm"><h2>دليل الحسابات والقيم الافتتاحية</h2><small>حساب رئيسي له كود، ويتفرع منه حسابات فرعية لكل منها كود (مثال: تأمينات ← تأمينات اجتماعية • تأمينات طبية). أدخل هنا القيمة الافتتاحية وتاريخها لكل حساب. الحسابات تُضاف أيضًا من نموذج الفاتورة، وإيراد الطلاب يُنشأ تلقائيًا عند رفع ملف الطلاب.</small>
+<div id="af" style="margin-top:8px"></div></div>
+<div id="sm"></div><div id="l"></div>
+<button class="b" onclick="saveAll()">حفظ كل التعديلات</button></main>
+<script src="js/app.js?v=34"></script><script>
+const U=guard(['admin']);
+const HE=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),KN={expense:'مصروف',revenue:'إيراد'};
+let CNT={};
+async function load(){try{await accLoad(true);const inv=await apiAll('invoices?select=account_id&account_id=not.is.null');CNT={};inv.forEach(i=>CNT[i.account_id]=(CNT[i.account_id]||0)+1);draw()}catch(e){msg(errT(e)+' — شغّل ملف migration_v11_accounts.sql',1)}}
+function draw(){const T=accTree();
+ $('#sm').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px"><div class="stat"><small>الحسابات الرئيسية</small><b>${T.filter(a=>!a.parent_id).length}</b></div><div class="stat"><small>الحسابات الفرعية</small><b>${T.filter(a=>a.parent_id).length}</b></div><div class="stat"><small>إجمالي القيم الافتتاحية</small><b>${money(T.reduce((s,a)=>s+(+a.opening||0),0))}</b></div></div>`;
+ $('#l').innerHTML=T.map(a=>{const sub=!!a.parent_id,kids=ACC.filter(x=>x.parent_id==a.id).length,n=CNT[a.id]||0;
+  return `<div class="card" style="${sub?'margin-inline-start:22px;border-inline-start:4px solid var(--gold)':'border-inline-start:6px solid var(--teal)'}"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><span class="bd on">${HE(a.code)}</span> <b>${HE(a.name)}</b> <small>${sub?'فرعي':'رئيسي'} • ${KN[a.kind]} • ${n} فاتورة${kids?' • '+kids+' فرعي':''}</small></div><button class="b s r" onclick="del('${a.id}')">حذف</button></div>
+<div class="grid" style="margin-top:6px"><div><label>اسم الحساب</label><input id="n_${a.id}" value="${HE(a.name)}"></div><div><label>القيمة الافتتاحية</label><input id="o_${a.id}" type="number" inputmode="decimal" value="${+a.opening||0}"></div></div>
+<label>تاريخ القيمة الافتتاحية</label><input id="d_${a.id}" type="date" value="${a.opening_date||''}"><button class="b s" style="margin-top:8px" onclick="save('${a.id}')">حفظ هذا الحساب</button></div>`}).join('')||'<div class="msg">لا توجد حسابات بعد. أضف أول حساب رئيسي من الزر أعلاه.</div>'}
+async function patch(id){const a=accById(id),nm=$('#n_'+id).value.trim(),op=$('#o_'+id).value,od=$('#d_'+id).value||null;if(!nm)throw Error('اسم الحساب مطلوب');if(op!==''&&!isFinite(+op))throw Error('القيمة الافتتاحية غير صالحة');
+ const o=+op||0,changed=nm!=a.name||o!=(+a.opening||0)||(od||null)!=(a.opening_date||null);if(!changed)return false;
+ if(ACC.some(x=>x.id!=id&&(x.parent_id||null)==(a.parent_id||null)&&nz(x.name)==nz(nm)))throw Error('يوجد حساب بنفس الاسم تحت نفس الحساب الرئيسي: '+nm);
+ const r=await api('accounts?id=eq.'+id,'PATCH',{name:nm,opening:o,opening_date:od});if(!r.length)throw Error('لم يتم الحفظ');
+ await audit('تعديل حساب / قيمة افتتاحية','accounts',id,null,{'الاسم':a.name,'الافتتاحي':a.opening,'التاريخ':a.opening_date},{'الاسم':nm,'الافتتاحي':o,'التاريخ':od});return true}
+async function save(id){try{const ch=await patch(id);await load();msg(ch?'تم حفظ الحساب':'لا توجد تعديلات')}catch(e){msg(errT(e),1)}}
+async function saveAll(){let n=0;try{for(const a of accTree())if(await patch(a.id))n++;await load();msg(n?'تم حفظ '+n+' حساب':'لا توجد تعديلات')}catch(e){msg('توقف الحفظ بعد '+n+' حساب: '+errT(e),1)}}
+async function del(id){const a=accById(id);if(!a)return;if(ACC.some(x=>x.parent_id==id))return msg('لا يمكن حذف حساب له حسابات فرعية',1);
+ try{const n=(await api('invoices?account_id=eq.'+id+'&select=id&limit=1')).length;if(n)return msg('لا يمكن حذف حساب عليه فواتير',1);if(!confirm('حذف الحساب «'+a.name+'» نهائيًا؟'))return;
+  await api('accounts?id=eq.'+id,'DELETE');await audit('حذف حساب','accounts',id,null,{'الكود':a.code,'الاسم':a.name},null);await load();msg('تم حذف الحساب')}catch(e){msg(errT(e),1)}}
+acctField($('#af'),{id:'newacc',addOnly:true,onSaved:()=>load()});load();
+</script></body></html>
