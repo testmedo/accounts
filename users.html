@@ -1,16 +1,43 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الحسابات</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=16"></head><body>
 <main><div id="msg" class="hide"></div>
-<details class="card"><summary><b>+ إنشاء حساب جديد</b></summary><label>الاسم</label><input id="n_name"><label>اسم المستخدم</label><input id="n_user" autocapitalize="none"><label>كلمة المرور</label><input id="n_pass"><label>الصلاحية</label><select id="n_role"></select><button class="b" onclick="add()">إنشاء</button></details>
+<details class="card"><summary><b>+ إنشاء حساب جديد</b></summary><label>الاسم</label><input id="n_name"><label>اسم المستخدم</label><input id="n_user" autocapitalize="none"><label>كلمة المرور</label><input id="n_pass"><label>الصلاحية</label><select id="n_role"></select><small style="display:block;margin-top:6px">بعد الإنشاء يمكنك تحديد الصلاحيات التفصيلية (الصفحات والأزرار والاعتماد) من بطاقة المستخدم.</small><button class="b" onclick="add()">إنشاء</button></details>
 <div id="l"></div></main>
-<script src="js/app.js?v=16"></script><script>
+<script src="js/app.js?v=39"></script><script>
 const U=guard(['admin']);const RL={treasury:'محاسب الخزينة',accountant:'محاسب',manager:'مدير الحسابات',chairman:'رئيس مجلس الأمناء',admin:'أدمن'};
+const HE=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const opts=s=>Object.entries(RL).map(([k,v])=>`<option value="${k}" ${k==s?'selected':''}>${v}</option>`).join('');$('#n_role').innerHTML=opts('accountant');
-async function load(){const u=await api('users?order=full_name');$('#l').innerHTML=u.map(x=>`<details class="card"><summary><b>${x.full_name}</b> <small>${x.username} • ${RL[x.role]}</small> <span class="bd ${x.active?'on':'off'}">${x.active?'نشط':'موقوف'}</span></summary>
-<label>الاسم</label><input id="a${x.id}" value="${x.full_name}"><label>اسم المستخدم</label><input id="b${x.id}" value="${x.username}" autocapitalize="none"><label>كلمة المرور</label><input id="c${x.id}" value="${x.password}"><label>الصلاحية</label><select id="d${x.id}">${opts(x.role)}</select>
+let UL=[],ACCL=[],PO=true;const OPEN=new Set();const tgl=(id,o)=>o?OPEN.add(id):OPEN.delete(id);
+const pt=id=>$('#pp'+id).classList.toggle('hide',$('#pm'+id).value!='custom');
+const at=id=>$('#aa'+id).classList.toggle('hide',$('#am'+id).value!='accounts');
+const acm=(el,id)=>document.querySelectorAll('input[name="ac'+id+'"][data-par="'+el.value+'"]').forEach(c=>c.checked=el.checked);
+const chk=n=>[...document.querySelectorAll('input[name="'+n+'"]:checked')];
+function permTag(x){const P=x.perms||{};if(x.role=='admin'||!(P.pages||(P.tiles&&Object.keys(P.tiles).length)||(P.apv&&P.apv!='role')))return '';return ' <span class="bd" style="background:#fff4d6;color:#8a6200">صلاحيات مخصصة</span>'}
+function permUI(x){if(x.role=='admin')return '<div class="msg">الأدمن يملك كل الصلاحيات دائمًا.</div>';
+ const P=x.perms||{},id=x.id,cu=Array.isArray(P.pages)&&P.pages.length,am=P.apv||'role',ap=new Set((P.apvAcc||[]).map(String)),mains=ACCL.filter(a=>!a.parent_id);
+ return `<div style="border-top:1px dashed var(--line);margin-top:14px;padding-top:6px"><h2 style="margin-top:8px">الصلاحيات التفصيلية</h2>
+<label>الصفحات الظاهرة في الشريط العلوي</label><select id="pm${id}" onchange="pt('${id}')"><option value="role">افتراضي حسب نوع الحساب</option><option value="custom" ${cu?'selected':''}>تحديد يدوي (يستبدل الافتراضي)</option></select>
+<div id="pp${id}" class="chk ${cu?'':'hide'}" style="margin-top:6px">${PERM_PAGES.map(([f,l])=>`<label><input type="checkbox" name="pg${id}" value="${f}" ${cu&&P.pages.includes(f)?'checked':''}>${l}</label>`).join('')}</div>
+<label>الأزرار الرئيسية داخل كل صفحة <small>(تظهر الأزرار المحددة فقط)</small></label>
+${Object.entries(PERM_TILES).map(([pg,L])=>{const al=P.tiles&&Array.isArray(P.tiles[pg])?P.tiles[pg]:null;return `<small style="display:block;margin-top:6px"><b>${PERM_PAGES.find(p=>p[0]==pg)[1]}</b></small><div class="chk">${L.map(([k,l])=>`<label><input type="checkbox" name="tl${id}" data-p="${pg}" value="${HE(k)}" ${!al||al.includes(k)?'checked':''}>${l}</label>`).join('')}</div>`}).join('')}
+<label>صلاحية الاعتماد</label><select id="am${id}" onchange="at('${id}')"><option value="role">افتراضي حسب نوع الحساب</option><option value="none" ${am=='none'?'selected':''}>لا يعتمد شيئًا</option><option value="accounts" ${am=='accounts'?'selected':''}>يعتمد حسابات محددة فقط</option></select>
+<div id="aa${id}" class="${am=='accounts'?'':'hide'}"><small style="display:block;margin-top:6px">يشمل اعتماد فواتير الخزينة وتحويلات الدفع المرتبطة بحساب الفاتورة. اختيار الحساب الرئيسي يحدد كل فروعه.</small>
+${mains.map(m=>`<div style="margin-top:6px"><label class="ck"><input type="checkbox" name="ac${id}" value="${m.id}" onchange="acm(this,'${id}')" ${ap.has(String(m.id))?'checked':''}><b>${HE(m.code)} ${HE(m.name)}</b></label><div class="chk" style="margin-inline-start:20px">${ACCL.filter(a=>a.parent_id==m.id).map(a=>`<label><input type="checkbox" name="ac${id}" value="${a.id}" data-par="${m.id}" ${ap.has(String(a.id))?'checked':''}>${HE(a.code)} ${HE(a.name)}</label>`).join('')}</div></div>`).join('')||'<small>لا توجد حسابات بعد.</small>'}</div></div>`}
+function permsOf(x){const id=x.id,P={};
+ if($('#pm'+id).value=='custom'){const pg=chk('pg'+id).map(c=>c.value);if(!pg.length)throw Error('اختر صفحة واحدة على الأقل للمستخدم: '+x.full_name);P.pages=pg}
+ const T={};Object.entries(PERM_TILES).forEach(([pg,L])=>{const ok=chk('tl'+id).filter(c=>c.dataset.p==pg).map(c=>c.value);if(ok.length<L.length)T[pg]=ok});if(Object.keys(T).length)P.tiles=T;
+ const m=$('#am'+id).value;if(m!='role'){P.apv=m;if(m=='accounts'){P.apvAcc=chk('ac'+id).map(c=>c.value);if(!P.apvAcc.length)throw Error('اختر حسابًا واحدًا على الأقل للاعتماد')}}
+ return Object.keys(P).length?P:null}
+async function load(){UL=await api('users?order=full_name');PO=!UL.length||('perms' in UL[0]);try{ACCL=await api('accounts?select=id,code,name,parent_id&order=code')}catch(e){ACCL=[]}
+ if(!PO)msg('لتفعيل الصلاحيات التفصيلية شغّل ملف migration_v13_user_permissions.sql في Supabase',1);
+ $('#l').innerHTML=UL.map(x=>`<details class="card" ${OPEN.has(x.id)?'open':''} ontoggle="tgl('${x.id}',this.open)"><summary><b>${HE(x.full_name)}</b> <small>${HE(x.username)} • ${RL[x.role]}</small> <span class="bd ${x.active?'on':'off'}">${x.active?'نشط':'موقوف'}</span>${PO?permTag(x):''}</summary>
+<label>الاسم</label><input id="a${x.id}" value="${HE(x.full_name)}"><label>اسم المستخدم</label><input id="b${x.id}" value="${HE(x.username)}" autocapitalize="none"><label>كلمة المرور</label><input id="c${x.id}" value="${HE(x.password)}"><label>الصلاحية</label><select id="d${x.id}">${opts(x.role)}</select>
+${PO?permUI(x):''}
 <div class="grid"><button class="b" onclick="save('${x.id}')">حفظ</button><button class="b ${x.active?'r':'g'}" onclick="tog('${x.id}',${!x.active})">${x.active?'إيقاف الحساب':'تفعيل الحساب'}</button></div></details>`).join('')}
 async function add(){try{if(!$('#n_name').value||!$('#n_user').value||!$('#n_pass').value)return msg('أكمل كل الحقول',1);await api('users','POST',{full_name:$('#n_name').value,username:$('#n_user').value.trim(),password:$('#n_pass').value,role:$('#n_role').value});msg('تم إنشاء الحساب');['n_name','n_user','n_pass'].forEach(i=>$('#'+i).value='');load()}catch(e){msg(/23505|duplicate/.test(e.message)?'اسم المستخدم مستخدم من قبل':'تعذر الإنشاء: '+e.message,1)}}
-async function save(id){try{await api('users?id=eq.'+id,'PATCH',{full_name:$('#a'+id).value,username:$('#b'+id).value.trim(),password:$('#c'+id).value,role:$('#d'+id).value});msg('تم الحفظ');load()}catch(e){msg(/23505|duplicate/.test(e.message)?'اسم المستخدم مستخدم من قبل':'تعذر الحفظ: '+e.message,1)}}
+async function save(id){try{const x=UL.find(u=>u.id==id),body={full_name:$('#a'+id).value,username:$('#b'+id).value.trim(),password:$('#c'+id).value,role:$('#d'+id).value};
+ if(PO&&x.role!='admin'){const p=permsOf(x);if(JSON.stringify(p)!=JSON.stringify(x.perms||null))body.perms=p}
+ await api('users?id=eq.'+id,'PATCH',body);msg('تم الحفظ');OPEN.add(id);load()}catch(e){msg(/23505|duplicate/.test(e.message)?'اسم المستخدم مستخدم من قبل':'تعذر الحفظ: '+e.message,1)}}
 async function tog(id,v){if(id==U.id&&!v)return msg('لا يمكنك إيقاف حسابك الحالي',1);await api('users?id=eq.'+id,'PATCH',{active:v});msg(v?'تم تفعيل الحساب':'تم إيقاف الحساب');load()}
 load();
 </script></body></html>

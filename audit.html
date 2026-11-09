@@ -2,7 +2,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=16"></head><body>
 <main><div id="msg" class="hide"></div><div class="card"><h2>سجل التدقيق</h2><small>كل تعديل أو حذف أو إنشاء لعقد أو شهر تعاقدي أو فاتورة، باسم من قام به. السجل للقراءة فقط.</small>
 <label>المستخدم</label><select id="u" onchange="load()"><option value="">الكل</option></select><label>العملية (بحث)</label><input id="a" oninput="sch()" placeholder="مثال: تعديل قيمة"><div class="grid"><div><label>من</label><input id="d1" type="date" onchange="load()"></div><div><label>إلى</label><input id="d2" type="date" onchange="load()"></div></div></div><div id="l"></div></main>
-<script src="js/app.js?v=16"></script><script>
+<script src="js/app.js?v=39"></script><script>
 guard(['manager','admin']);let tm,UL=[];
 api('users?select=id,full_name&order=full_name').then(u=>{UL=u;$('#u').innerHTML+=u.map(x=>`<option value="${x.id}">${x.full_name}</option>`).join('')});
 const fo=o=>o?Object.entries(o).map(([k,v])=>`${k}: ${v==null?'—':v}`).join(' | '):'';

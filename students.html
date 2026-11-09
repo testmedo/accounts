@@ -13,7 +13,7 @@
 <section id="qs" class="hide"><button class="back" onclick="go()">→ رجوع للتبويبات</button>
 <div class="card frm"><h2>الاستعلام عن طالب</h2><input id="q" placeholder="اكتب كود الطالب أو اسمه أو جزءًا منه" oninput="find()" autocomplete="off">
 <small style="display:block;margin-top:6px">للدفع للطالب (استرداد مثلًا): أنشئ فاتورة من المحاسبة أو قيدًا من الخزينة واختر العقد «اسم الطالب — إيرادات الطالب».</small></div><div id="sr"></div><div id="sd"></div></section></main>
-<script src="js/app.js?v=34"></script><script>
+<script src="js/app.js?v=39"></script><script>
 const U=guard(['treasury','manager','admin']);
 const E=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'),CT='إيرادات الطالب';
 function go(id){['up','qs'].forEach(x=>$('#'+x).classList.toggle('hide',x!=id));$('#home').classList.toggle('hide',!!id);$('#msg').className='hide';scrollTo(0,0)}

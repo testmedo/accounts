@@ -9,7 +9,7 @@
 
 <div id="ov" class="ov hide"><div class="md"><h2><span id="mt"></span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div>
 <div class="grid"><button class="b" id="ms">حفظ التعديلات</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
-<script src="js/app.js?v=25"></script><script>
+<script src="js/app.js?v=39"></script><script>
 guard(['admin']);let I=[];const ST={pending:'معلق',approved:'معتمد',rejected:'مرفوض'},iso=d=>new Date(d).toISOString().slice(0,10),tz=v=>v+' 09:00:00+00';
 let SA=[],SM={},tm;api('suppliers?select=id,name,code&order=name').then(s=>{SA=s;s.forEach(x=>SM[x.name+' ('+x.code+')']=x.id);$('#dl').innerHTML=Object.keys(SM).map(k=>`<option value="${k}">`).join('')});
 const TN={pay:'مدفوع إلى',income:'إيداع من',bill:'فاتورة'};function sch(){clearTimeout(tm);tm=setTimeout(load,350)}
