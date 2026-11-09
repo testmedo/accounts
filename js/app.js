@@ -15,14 +15,34 @@ const money=n=>Number(n||0).toLocaleString('ar-EG',{maximumFractionDigits:2})+' 
 const fdate=d=>new Date(d).toLocaleDateString('ar-EG');
 // رابط آمن لفتح صورة الفاتورة الورقية في تبويب جديد (يعيد نصًا فارغًا إن لم تُرفع صورة)
 const imgL=(u,t)=>u?`<a href="${String(u).replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" target="_blank" rel="noopener">${t||'📎 عرض صورة الفاتورة'}</a>`:'';
+// ===== الصلاحيات التفصيلية (تُخزَّن في users.perms) =====
+const PERM_PAGES=[['accountant.html','المحاسبة'],['treasury.html','الخزينة'],['students.html','إيرادات الطلاب'],['report.html','التقارير وكشف الحساب'],['approvals.html','الاعتمادات'],['chairman.html','متابعة المورد'],['audit.html','سجل التدقيق'],['admin.html','الرفع'],['accounts.html','دليل الحسابات'],['manage.html','التعديل والحذف'],['users.html','إدارة المستخدمين']];
+const PERM_TILES={
+'accountant.html':[["go('sup')",'مورد جديد'],["go('con')",'عقد رئيسي جديد'],["go('mon')",'العقود الشهرية'],["go('inv')",'فاتورة فرعية'],["go('open')",'دفع المتبقي'],["go('edit')",'تعديل فاتورة'],["go('mine')",'فواتيري'],["go('mrep')",'المتبقي من العقود الشهرية'],["go('bsum')",'ملخص أرصدة الخزينة'],["go('imp')",'رفع Excel'],["go('list')",'الموردون والعقود'],["location.href='report.html'",'كشف الحساب والتقارير']],
+'treasury.html':[['tab(1)','المستحقات'],['tab(2)','قيد جديد'],['tab(3)','آخر العمليات'],['tab(4)','تقرير الخزينة'],['tab(5)','رصيد الخزينة'],['tab(6)','ملخص أرصدة الخزينة']],
+'approvals.html':[['tab(3)','فواتير الخزينة بانتظار الاعتماد'],['tab(1)','تحويلات بانتظار الاعتماد'],['tab(4)','قرارات الفواتير السابقة'],['tab(2)','قرارات التحويلات السابقة']],
+'chairman.html':[['pendInv()','فواتير الخزينة بانتظار الاعتماد'],['pend()','تحويلات بانتظار الاعتماد'],['repOpen()','تقرير سريع'],["cashOpen('treasury')",'إيراد الخزينة الطبيعي'],["cashOpen('accounts')",'التحويلات'],['acctOpen()','كشف الحسابات']]};
+const permsOfMe=()=>((me()||{}).perms)||{};
+const tileOk=on=>{const u=me();if(!u||u.role=='admin')return true;const L=(permsOfMe().tiles||{})[location.pathname.split('/').pop()];return !Array.isArray(L)||L.includes(on)};
+// هل يحق للمستخدم الحالي اعتماد بند حسابه a؟
+const canApv=a=>{const u=me();if(!u||u.role=='admin')return true;const P=permsOfMe(),m=P.apv||'role';if(m=='role')return true;if(m=='none')return false;return a!=null&&(P.apvAcc||[]).map(String).includes(String(a))};
+async function apvChk(t,id){const u=me(),m=permsOfMe().apv||'role';if(!u||u.role=='admin'||m=='role')return true;
+ if(m=='none'){msg('لا تملك صلاحية الاعتماد',1);return false}
+ try{const r=(await api(t=='payments'?'payments?id=eq.'+id+'&select=invoices(account_id)':'invoices?id=eq.'+id+'&select=account_id'))[0];if(r&&canApv(t=='payments'?(r.invoices||{}).account_id:r.account_id))return true}catch(e){}
+ msg('لا تملك صلاحية اعتماد هذا البند (حسابه خارج الحسابات المسموح لك بها)',1);return false}
 const home={treasury:'treasury.html',accountant:'accountant.html',manager:'approvals.html',chairman:'chairman.html',admin:'admin.html'};
 const links={treasury:[['treasury.html','الخزينة'],['students.html','إيرادات الطلاب'],['report.html','التقارير']],accountant:[['accountant.html','المحاسبة'],['report.html','كشف الحساب']],manager:[['approvals.html','الاعتمادات'],['treasury.html','الخزينة'],['students.html','إيرادات الطلاب'],['audit.html','سجل التدقيق'],['accountant.html','المحاسبة'],['report.html','كشف الحساب'],['chairman.html','متابعة المورد']],chairman:[['chairman.html','متابعة المورد']],admin:[['admin.html','الرفع'],['accounts.html','الحسابات'],['treasury.html','الخزينة'],['students.html','إيرادات الطلاب'],['audit.html','سجل التدقيق'],['users.html','الحسابات'],['manage.html','التعديل والحذف'],['report.html','التقارير'],['accountant.html','المحاسبة'],['approvals.html','الاعتمادات'],['chairman.html','متابعة المورد']]};
 const IC={user:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6',folder:'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',receipt:'M6 2h12v20l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6',wallet:'M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l3-3h12M16 14h2',list:'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',cal:'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',coin:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v12M9 9h4.5a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3H15',shield:'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5zM9 12l2 2 4-4',up:'M12 3v12M7 8l5-5 5 5M5 21h14',edit:'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',chart:'M3 3v18h18M7 15l4-4 3 3 5-6'};
-const card=(ic,t,s,on)=>`<button class="ct" onclick="${on}"><span class="ci"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${IC[ic]}"/></svg></span><span class="cx"><b>${t}</b><small>${s}</small></span><span class="cv">‹</span></button>`;
-function guard(roles){const u=me();if(!u||!roles.includes(u.role)){location.href='index.html';return null}
- const cur=location.pathname.split('/').pop();
- document.body.insertAdjacentHTML('afterbegin',`<header><img src="assets/logo.png" alt="شعار الجامعة"><h1>${u.full_name}</h1><button onclick="sessionStorage.clear();location.href='index.html'">خروج</button></header>`+(links[u.role].length>1?`<nav>${links[u.role].map(l=>`<a href="${l[0]}" class="${l[0]==cur?'on':''}">${l[1]}</a>`).join('')}</nav>`:''));
- document.body.insertAdjacentHTML('beforeend','<footer><img src="assets/logo.png" alt=""><span>نظام متابعة مدفوعات الموردين والمقاولين</span></footer>');return u}
+const card=(ic,t,s,on)=>!tileOk(on)?'':`<button class="ct" onclick="${on}"><span class="ci"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${IC[ic]}"/></svg></span><span class="cx"><b>${t}</b><small>${s}</small></span><span class="cv">‹</span></button>`;
+function guard(roles){const u=me(),P=(u&&u.perms)||{},pg=(u&&u.role!='admin'&&Array.isArray(P.pages)&&P.pages.length)?P.pages:null,cur=location.pathname.split('/').pop();
+ if(!u||(pg?!pg.includes(cur):!roles.includes(u.role))){location.href=(u&&pg)?pg[0]:'index.html';return null}
+ const L=pg?pg.map(p=>[p,(PERM_PAGES.find(x=>x[0]==p)||[0,p])[1]]):links[u.role];
+ document.body.insertAdjacentHTML('afterbegin',`<header><img src="assets/logo.png" alt="شعار الجامعة"><h1>${u.full_name}</h1><button onclick="sessionStorage.clear();location.href='index.html'">خروج</button></header>`+(L.length>1?`<nav>${L.map(l=>`<a href="${l[0]}" class="${l[0]==cur?'on':''}">${l[1]}</a>`).join('')}</nav>`:''));
+ document.body.insertAdjacentHTML('beforeend','<footer><img src="assets/logo.png" alt=""><span>نظام متابعة مدفوعات الموردين والمقاولين</span></footer>');
+ // تحديث الصلاحيات من قاعدة البيانات (تسري تغييرات الأدمن دون إعادة تسجيل الدخول)
+ api('users?id=eq.'+u.id+'&select=role,active,perms').then(r=>{const f=r[0];if(!f)return;if(f.active===false){sessionStorage.clear();location.href='index.html';return}
+  if(f.role!=u.role||JSON.stringify(f.perms||null)!=JSON.stringify(u.perms||null)){u.role=f.role;u.perms=f.perms||null;sessionStorage.setItem('u',JSON.stringify(u));location.reload()}}).catch(()=>{});
+ return u}
 const paidOf=i=>(i.payments||[]).filter(p=>p.status=='approved').reduce((s,p)=>s+Number(p.amount),0);
 const msg=(t,e)=>{const m=$('#msg');m.className='msg'+(e?' e':'');m.textContent=t;m.scrollIntoView({block:'center'})};
 
