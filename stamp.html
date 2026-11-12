@@ -1,0 +1,41 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ختم الجامعة</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=40">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script></head><body>
+<main><div id="msg" class="hide"></div>
+<div class="card frm"><h2>ختم الجامعة</h2><small>الفواتير التي حُدِّدت عند إنشائها لتظهر هنا، وتظهر بعد اعتمادها وتنفيذها (تحصيلها أو صرفها) من الخزينة. زر «أرشفة» يخفيها من الشاشة دون حذفها، ويمكن إرجاعها من تبويب «المؤرشفة».</small>
+<div class="tabs" style="margin-top:10px"><button id="t0" class="on" onclick="setTab(0)">الحالية</button><button id="t1" onclick="setTab(1)">المؤرشفة</button></div>
+<div class="grid"><div><label>من تاريخ التنفيذ (اختياري)</label><input id="d1" type="date" onchange="draw()"></div><div><label>إلى تاريخ التنفيذ (اختياري)</label><input id="d2" type="date" onchange="draw()"></div></div>
+<div id="info" style="margin-top:8px"></div>
+<div class="grid"><button class="b" id="xl">تحميل Excel</button><button class="b g" id="pdf">تحميل PDF</button></div>
+<button class="b" id="arch" onclick="archSel()">أرشفة المحدد</button></div>
+<div class="sheet" id="sh"><div class="msg">جارٍ التحميل…</div></div></main>
+<script src="js/app.js?v=40"></script><script>
+const U=guard(['treasury','manager','admin']);
+const HE=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),TN={income:'تحصيل',pay:'صرف',bill:'فاتورة'};
+let TAB=0,ALL=[],L=[],WAIT=0,SEL=new Set();
+const apd=i=>(i.payments||[]).filter(p=>p.status=='approved'),colD=i=>apd(i).map(p=>p.created_at).sort().pop()||i.created_at,done=i=>apd(i).length>0&&rnd(i.amount-paidOf(i))<=0.001;
+function setTab(n){TAB=n;SEL.clear();$('#t0').classList.toggle('on',n==0);$('#t1').classList.toggle('on',n==1);load()}
+async function load(){try{$('#sh').innerHTML='<div class="msg">جارٍ التحميل…</div>';
+ ALL=await apiAll('invoices?stamp=eq.true&stamp_archived=eq.'+(TAB?'true':'false')+'&apv=eq.approved&dest=eq.treasury&select=id,code,type,amount,description,image_url,created_at,suppliers(name,code),contracts(title),payments(amount,status,created_at)&order=created_at.desc');
+ WAIT=TAB?0:ALL.filter(i=>!done(i)).length;draw()}catch(e){$('#sh').innerHTML='';msg(errT(e)+' — شغّل ملف migration_v14_university_stamp.sql',1)}}
+function draw(){const d1=$('#d1').value,d2=$('#d2').value;
+ L=ALL.filter(i=>(TAB||done(i))&&(!d1||colD(i).slice(0,10)>=d1)&&(!d2||colD(i).slice(0,10)<=d2));SEL=new Set([...SEL].filter(id=>L.some(i=>i.id==id)));
+ const tot=rnd(L.reduce((s,i)=>s+(+i.amount||0),0));
+ $('#info').innerHTML=TAB?'':(WAIT?`<div class="msg">بانتظار التنفيذ من الخزينة (لم تظهر بعد): <b>${WAIT}</b> فاتورة</div>`:'');
+ $('#arch').textContent=TAB?'إلغاء أرشفة المحدد (إرجاعها للشاشة)':'أرشفة المحدد';$('#arch').className='b'+(TAB?' g':'');
+ $('#sh').innerHTML=`<div class="sh"><img src="assets/logo.png" alt=""><div><b>ختم الجامعة — ${TAB?'الفواتير المؤرشفة':'الفواتير الحالية'}</b><br><small>${L.length} فاتورة • الإجمالي ${money(tot)} • ${fdate(new Date())}</small></div></div>
+<table><thead><tr><th class="noprint"><input type="checkbox" onchange="selAll(this.checked)" ${L.length&&SEL.size==L.length?'checked':''}></th><th>#</th><th>الاسم</th><th>كود الفاتورة</th><th>النوع</th><th>العقد</th><th>البيان</th><th>المبلغ</th><th>تاريخ الفاتورة</th><th>تاريخ التنفيذ</th><th class="noprint">الصورة</th><th class="noprint">إجراء</th></tr></thead><tbody>${L.map((i,k)=>`<tr><td class="noprint"><input type="checkbox" ${SEL.has(i.id)?'checked':''} onchange="sel('${i.id}',this.checked)"></td><td>${k+1}</td><td>${HE(i.suppliers?.name)}</td><td>${HE(i.code)}</td><td>${TN[i.type]||''}</td><td>${HE(i.contracts?.title)}</td><td>${HE(i.description)}</td><td>${money(i.amount)}</td><td>${fdate(i.created_at)}</td><td>${fdate(colD(i))}</td><td class="noprint">${i.image_url?imgL(i.image_url,'📎 عرض'):'—'}</td><td class="noprint"><button class="b s ${TAB?'g':''}" onclick="arch(['${i.id}'])">${TAB?'إرجاع':'أرشفة'}</button></td></tr>`).join('')||'<tr><td colspan="12">لا توجد فواتير</td></tr>'}</tbody></table>`;
+ $('#arch').disabled=!SEL.size;$('#arch').style.opacity=SEL.size?1:.5}
+function sel(id,v){v?SEL.add(id):SEL.delete(id);$('#arch').disabled=!SEL.size;$('#arch').style.opacity=SEL.size?1:.5}
+function selAll(v){SEL=v?new Set(L.map(i=>i.id)):new Set();draw()}
+const archSel=()=>arch([...SEL]);
+async function arch(ids){if(!ids.length)return;const f=!TAB;if(!confirm((f?'أرشفة ':'إرجاع ')+ids.length+' فاتورة'+(f?' وإخفائها من الشاشة؟':' إلى الشاشة؟')))return;
+ try{let n=0;for(let i=0;i<ids.length;i+=100){const c=ids.slice(i,i+100),r=await api('invoices?id=in.('+c.join(',')+')','PATCH',{stamp_archived:f,stamp_archived_at:f?new Date().toISOString():null});n+=r.length}
+  await audit(f?'أرشفة فواتير ختم الجامعة':'إلغاء أرشفة فواتير ختم الجامعة','invoices',ids[0],null,null,{'العدد':n,'الأكواد':L.filter(i=>ids.includes(i.id)).map(i=>i.code).join(' ، ')});
+  msg(f?'تمت الأرشفة':'تم الإرجاع');SEL.clear();load()}catch(e){msg(errT(e),1)}}
+$('#xl').onclick=()=>{if(!L.length)return msg('لا توجد بيانات',1);
+ const aoa=[['ختم الجامعة',TAB?'الفواتير المؤرشفة':'الفواتير الحالية'],[],['#','الاسم','كود الاسم','كود الفاتورة','النوع','العقد','البيان','المبلغ','تاريخ الفاتورة','تاريخ التنفيذ','رابط صورة الفاتورة'],...L.map((i,k)=>[k+1,i.suppliers?.name||'',i.suppliers?.code||'',i.code||'',TN[i.type]||'',i.contracts?.title||'',i.description||'',+i.amount,i.created_at.slice(0,10),colD(i).slice(0,10),i.image_url||'']),[],['الإجمالي','','','','','','',rnd(L.reduce((s,i)=>s+(+i.amount||0),0))]];
+ const ws=XLSX.utils.aoa_to_sheet(aoa),wb=XLSX.utils.book_new();ws['!cols']=[5,26,14,16,10,26,34,14,14,14,40].map(w=>({wch:w}));wb.Workbook={Views:[{RTL:true}]};XLSX.utils.book_append_sheet(wb,ws,'ختم الجامعة');XLSX.writeFile(wb,'university_stamp.xlsx');msg('تم تحميل ملف Excel')};
+$('#pdf').onclick=()=>L.length?sheetToPdf('#sh',9,'university_stamp.pdf'):msg('لا توجد بيانات',1);
+load();
+</script></body></html>

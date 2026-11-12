@@ -3,7 +3,7 @@
 <main><div id="msg" class="hide"></div>
 <details class="card"><summary><b>+ إنشاء حساب جديد</b></summary><label>الاسم</label><input id="n_name"><label>اسم المستخدم</label><input id="n_user" autocapitalize="none"><label>كلمة المرور</label><input id="n_pass"><label>الصلاحية</label><select id="n_role"></select><small style="display:block;margin-top:6px">بعد الإنشاء يمكنك تحديد الصلاحيات التفصيلية (الصفحات والأزرار والاعتماد) من بطاقة المستخدم.</small><button class="b" onclick="add()">إنشاء</button></details>
 <div id="l"></div></main>
-<script src="js/app.js?v=39"></script><script>
+<script src="js/app.js?v=40"></script><script>
 const U=guard(['admin']);const RL={treasury:'محاسب الخزينة',accountant:'محاسب',manager:'مدير الحسابات',chairman:'رئيس مجلس الأمناء',admin:'أدمن'};
 const HE=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const opts=s=>Object.entries(RL).map(([k,v])=>`<option value="${k}" ${k==s?'selected':''}>${v}</option>`).join('');$('#n_role').innerHTML=opts('accountant');

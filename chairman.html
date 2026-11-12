@@ -8,7 +8,7 @@
 <div id="home"><div id="tb"></div><div class="sec">الاعتمادات</div><div class="cards" id="pbA"></div><div class="sec">التقارير والمتابعة</div><div class="cards" id="pbB"></div></div>
 <div id="vw" class="hide"><div class="vhd"><button class="back" onclick="goBack()">→ رجوع</button><b id="vt"></b></div>
 <div id="pl" class="hide"></div><div id="pi" class="hide"></div><div id="rp" class="hide"></div><div id="cw" class="hide"></div><div id="ac" class="hide"></div><div id="res" class="hide"></div><div id="det" class="hide"></div></div></main>
-<script src="js/app.js?v=39"></script><script>
+<script src="js/app.js?v=40"></script><script>
 guard(['chairman','manager','admin']);let t,CWK=null,ALLP=false;
 const PANELS=['pl','pi','rp','cw','ac','res','det'];
 function ov(title){PANELS.forEach(x=>$('#'+x).className='hide');$('#home').classList.add('hide');$('#vw').className='';$('#vt').textContent=title||'';scrollTo(0,0)}

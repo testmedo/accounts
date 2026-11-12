@@ -5,7 +5,7 @@
 <div id="af" style="margin-top:8px"></div></div>
 <div id="sm"></div><div id="l"></div>
 <button class="b" onclick="saveAll()">حفظ كل التعديلات</button></main>
-<script src="js/app.js?v=39"></script><script>
+<script src="js/app.js?v=40"></script><script>
 const U=guard(['admin']);
 const HE=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),KIND_AR={expense:'مصروف',revenue:'إيراد'};
 const enc=n=>encodeURIComponent(n).replace(/'/g,'%27');
@@ -16,7 +16,21 @@ async function load(){try{await accLoad(true);const inv=await apiAll('invoices?s
 function form(a,gs){return `<div class="grid" style="margin-top:6px"><div><label>اسم الحساب</label><input id="n_${a.id}" value="${HE(a.name)}"></div><div><label>القيمة الافتتاحية</label><input id="o_${a.id}" type="number" inputmode="decimal" value="${+a.opening||0}"></div></div>
 <label>تاريخ القيمة الافتتاحية</label><input id="d_${a.id}" type="date" value="${a.opening_date||''}">
 ${gs&&GOK?`<label>المجموعة</label><select id="g_${a.id}"><option value="">بدون مجموعة</option>${gs.map(g=>`<option value="${HE(g)}" ${g==GRP[a.id]?'selected':''}>${HE(g)}</option>`).join('')}</select>`:''}
-<div class="grid"><button class="b s" style="margin-top:8px;width:100%" onclick="save('${a.id}')">حفظ هذا الحساب</button><button class="b s r" style="margin-top:8px;width:100%" onclick="del('${a.id}')">حذف الحساب</button></div>`}
+<div class="grid"><button class="b s" style="margin-top:8px;width:100%" onclick="save('${a.id}')">حفظ هذا الحساب</button><button class="b s r" style="margin-top:8px;width:100%" onclick="del('${a.id}')">حذف الحساب</button></div>${gs?'':mvUI(a)}`}
+function mvUI(a){const tg=ACC.filter(x=>!x.parent_id&&x.id!=a.id&&x.kind==a.kind);if(!tg.length||nz(a.name)==nz('إيراد الطلاب'))return '';const n=ACC.filter(x=>x.parent_id==a.id).length;
+ return `<details style="margin-top:12px;border-top:1px dashed var(--line);padding-top:8px"><summary style="cursor:pointer"><b>نقل هذا الحساب ليصبح فرعيًا داخل حساب رئيسي آخر</b></summary><small style="display:block;margin:6px 0">يصبح هذا الحساب فرعيًا داخل الحساب الرئيسي الذي تختاره${n?`، وتتحول حساباته الفرعية (${n}) تلقائيًا إلى مجموعة باسم «${HE(a.name)}» داخله`:''}. الفواتير والمعاملات والقيم الافتتاحية وأكواد الحسابات تبقى كما هي دون أي تغيير.</small><label>الحساب الرئيسي الجديد</label><select id="mv_${a.id}"><option value="">— اختر الحساب الرئيسي —</option>${tg.map(x=>`<option value="${x.id}">${HE(x.code)} — ${HE(x.name)}</option>`).join('')}</select><button class="b s g" style="margin-top:8px" onclick="mvMain('${a.id}')">نقل الحساب</button></details>`}
+async function mvMain(id){try{const a=accById(id),tid=$('#mv_'+id).value;if(!a)return;if(!tid)return msg('اختر الحساب الرئيسي الذي سيُنقل إليه',1);const t=accById(tid);
+ if(a.parent_id)return msg('هذا الحساب فرعي بالفعل',1);if(!t||t.parent_id)return msg('الوجهة يجب أن تكون حسابًا رئيسيًا',1);if(t.kind!=a.kind)return msg('لا يمكن نقل حساب '+KIND_AR[a.kind]+' داخل حساب '+KIND_AR[t.kind],1);
+ if(nz(a.name)==nz('إيراد الطلاب'))return msg('حساب «إيراد الطلاب» مرتبط برفع ملف الطلاب ولا يُنقل',1);
+ const subs=ACC.filter(x=>x.parent_id==a.id),g=subs.length?a.name:null;if(subs.length&&!GOK)return msg('نقل حساب له فروع يحتاج تشغيل ملف migration_v12_account_groups.sql أولًا',1);
+ const kids=ACC.filter(x=>x.parent_id==t.id),names=new Set(kids.map(x=>nz(x.name))),bad=[a,...subs].filter(x=>names.has(nz(x.name)));
+ if(bad.length)return msg('يوجد داخل «'+t.name+'» حسابات بنفس الأسماء: '+bad.map(x=>x.name).join('، ')+' — غيّر الاسم أولًا',1);
+ const merge=g&&kids.some(x=>GRP[x.id]&&nz(GRP[x.id])==nz(g));
+ if(!confirm('نقل الحساب «'+a.name+'» ليصبح فرعيًا داخل «'+t.name+'»؟'+(subs.length?'\nستتحول حساباته الفرعية ('+subs.length+') إلى مجموعة «'+g+'» داخله'+(merge?' (ستُدمج مع مجموعة بنفس الاسم موجودة)':'')+'.':'')+'\nلن تتأثر أي فاتورة أو معاملة أو قيمة افتتاحية أو كود حساب.'))return;
+ if(subs.length){const r=await api('accounts?id=in.('+subs.map(x=>x.id).join(',')+')','PATCH',{parent_id:t.id,grp:g});if(r.length!=subs.length)throw Error('لم يتم نقل كل الحسابات الفرعية — لم يُنقل الحساب الرئيسي، راجع الحسابات')}
+ const r2=await api('accounts?id=eq.'+id,'PATCH',g?{parent_id:t.id,grp:g}:{parent_id:t.id});if(!r2.length)throw Error('لم يتم نقل الحساب');
+ await audit('نقل حساب رئيسي ليصبح فرعيًا','accounts',id,null,{'الحساب':a.code+' — '+a.name,'نوعه':'رئيسي','الفروع':subs.length},{'الحساب الرئيسي الجديد':t.code+' — '+t.name,'المجموعة':g||'—'});
+ OPEN.add(t.id);if(g)OPEN.add('g_'+t.id+'_'+enc(g));await load();msg('تم نقل الحساب'+(subs.length?' وتحويل حساباته الفرعية إلى مجموعة «'+g+'»':'')+' — لم تتأثر أي معاملات')}catch(e){msg(errT(e),1)}}
 function subCard(a,gs){return `<details class="card" style="margin-inline-start:14px;border-inline-start:4px solid var(--gold)" ${OPEN.has(a.id)?'open':''} ontoggle="tg('${a.id}',this.open)"><summary style="cursor:pointer"><span class="bd on">${HE(a.code)}</span> <b>${HE(a.name)}</b> <small>فرعي • ${INV_CNT[a.id]||0} فاتورة • ${money(+a.opening||0)}</small></summary>${form(a,gs)}</details>`}
 function draw(){const T=accTree(),mains=T.filter(a=>!a.parent_id);
  $('#sm').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px"><div class="stat"><small>الحسابات الرئيسية</small><b>${mains.length}</b></div><div class="stat"><small>الحسابات الفرعية</small><b>${T.length-mains.length}</b></div><div class="stat"><small>إجمالي القيم الافتتاحية</small><b>${money(T.reduce((s,a)=>s+(+a.opening||0),0))}</b></div></div>`;

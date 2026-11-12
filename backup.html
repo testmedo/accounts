@@ -1,0 +1,161 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>النسخ الاحتياطي</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=40">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>#log{max-height:260px;overflow:auto;background:#f7faf9;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:.82rem;line-height:1.7;margin-top:8px}#log div.e{color:#b3341f}#log div.w{color:#8a6200}#log div.k{color:#237a4b}.rt td,.rt th{border:1px solid var(--line);padding:4px 8px;text-align:start}.rt{border-collapse:collapse;width:100%;font-size:.85rem;margin-top:8px}.rt th{background:#e8f1f0}.rt .bad{background:#fbe9e5;color:#b3341f;font-weight:700}.rt .good{color:#237a4b}</style></head><body>
+<main><div id="msg" class="hide"></div>
+<div class="card frm"><h2>النسخ الاحتياطي</h2>
+<small>ينسخ كل جداول النظام (المستخدمون والصلاحيات، الحسابات والقيم الافتتاحية، الموردون والطلاب، العقود والفترات والشهور، الفواتير، الدفعات، أرصدة الخزينة، سجل التدقيق) على دفعات مرقّمة بترتيب ثابت، مع صور الفواتير الورقية، ثم يتحقق من اكتمال العدد ويحسب بصمة لكل ملف. يُفضَّل أخذ النسخة وقت قلة الاستخدام.</small>
+<div id="env" class="msg" style="margin-top:8px"></div>
+<div class="grid"><button class="b g" id="bpick" onclick="pickDir()">اختيار مجلد الحفظ</button><div id="dirn" style="align-self:center;font-weight:700"></div></div>
+<label class="ck"><input type="checkbox" id="wimg" checked>تضمين صور الفواتير الورقية (موصى به)</label>
+<button class="b" id="bbk" onclick="doBackup()">إنشاء نسخة احتياطية كاملة الآن</button>
+<button class="b r hide" id="bstop" onclick="STOP=true">إيقاف العملية</button>
+<div id="prog" style="margin-top:8px;font-weight:700"></div><div id="bsum"></div></div>
+
+<div class="card frm"><h2>استعادة نسخة احتياطية</h2>
+<small>اختر نسخة من مجلد الحفظ أو من مكان آخر (مجلد نسخة أو ملف ZIP)، ثم افحص سلامتها، ثم استعدها. قبل أي استعادة تُؤخذ تلقائيًا نسخة أمان من الوضع الحالي.</small>
+<label>النسخ الموجودة في مجلد الحفظ</label><select id="rsel" onchange="selBackup()"><option value="">— اختر نسخة —</option></select>
+<div class="grid"><button class="b s g" style="width:100%" onclick="scanRoot()">تحديث القائمة</button><button class="b s g" style="width:100%" onclick="openOther()">فتح مجلد نسخة من مكان آخر</button></div>
+<label>أو ملف نسخة ZIP</label><input id="rzip" type="file" accept=".zip" onchange="openZip(this.files[0])">
+<div id="rinfo" style="margin-top:8px"></div>
+<button class="b g hide" id="rchk" onclick="checkBackup()">فحص سلامة النسخة (بدون أي تغيير)</button>
+<div id="rmode" class="hide"><label>طريقة الاستعادة</label>
+<label class="ck"><input type="radio" name="md" value="merge" checked>دمج: يُعاد كل ما في النسخة (إضافة وتحديث) ولا يُحذف أي شيء موجود حاليًا</label>
+<label class="ck"><input type="radio" name="md" value="mirror">مطابقة كاملة: يصبح النظام مطابقًا للنسخة تمامًا (يُحذف ما أُضيف بعد تاريخها)</label>
+<label>للتأكيد اكتب كلمة: استعادة</label><input id="rconf" autocomplete="off">
+<button class="b r" id="rgo" onclick="doRestore()">بدء الاستعادة</button></div>
+<div id="rprog" style="margin-top:8px;font-weight:700"></div><div id="rres"></div></div>
+<div class="card"><b>سجل العمليات</b><div id="log"></div></div></main>
+<script src="js/app.js?v=40"></script><script>
+const U=guard(['admin']);
+const KNOWN=['users','accounts','suppliers','contracts','contract_periods','contract_months','invoices','payments','treasury_opening','audit_log'];
+const TN={users:'المستخدمون والصلاحيات',accounts:'الحسابات',suppliers:'الموردون والطلاب',contracts:'العقود',contract_periods:'فترات العقود',contract_months:'الشهور التعاقدية',invoices:'الفواتير',payments:'الدفعات',treasury_opening:'أرصدة أول المدة',audit_log:'سجل التدقيق'};
+const FS=!!window.showDirectoryPicker,IMGRE=/\/storage\/v1\/object\/public\/photo\/([^"\\\s?#]+)/g,IMGP='/storage/v1/object/public/photo/';
+let ROOT=null,BUSY=false,STOP=false,CUR=null;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms)),pad=(n,w)=>String(n).padStart(w,'0'),HD=()=>({apikey:KEY,Authorization:'Bearer '+KEY});
+const E=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+function say(id,t){$('#'+id).textContent=t}
+function log(t,k){const l=$('#log'),d=document.createElement('div');d.className=k||'';d.textContent=new Date().toLocaleTimeString('ar-EG')+' — '+t;l.appendChild(d);while(l.childNodes.length>500)l.removeChild(l.firstChild);l.scrollTop=l.scrollHeight}
+const fmtD=d=>d.getFullYear()+'-'+pad(d.getMonth()+1,2)+'-'+pad(d.getDate(),2)+'_'+pad(d.getHours(),2)+'-'+pad(d.getMinutes(),2)+'-'+pad(d.getSeconds(),2);
+async function shaBuf(b){const h=await crypto.subtle.digest('SHA-256',b);return[...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+const canon=v=>Array.isArray(v)?'['+v.map(canon).join(',')+']':v&&typeof v=='object'?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',')+'}':JSON.stringify(v);
+function h53(s){let a=0xdeadbeef,b=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}a=Math.imul(a^a>>>16,2246822507)^Math.imul(b^b>>>13,3266489909);b=Math.imul(b^b>>>16,2246822507)^Math.imul(a^a>>>13,3266489909);return(4294967296*(2097151&b)+(a>>>0)).toString(36)}
+const omit=(r,s)=>{if(!s||!s.size)return r;const o={};for(const k in r)if(!s.has(k))o[k]=r[k];return o};
+const pkv=(r,pk)=>pk.map(k=>r[k]).join('|');
+function rewriteImg(r){let o=null;for(const k in r){const v=r[k];if(typeof v=='string'&&v.includes(IMGP)&&!v.startsWith(SB+IMGP)){o=o||{...r};o[k]=SB+IMGP+v.slice(v.indexOf(IMGP)+IMGP.length)}}return o||r}
+// ---------- الاتصال بقاعدة البيانات (مع إعادة المحاولة) ----------
+async function rest(path,o={}){for(let a=0;;a++){let r,t;try{r=await fetch(SB+'/rest/v1/'+path,{method:o.method||'GET',headers:{...HD(),'Content-Type':'application/json',...(o.h||{})},body:o.body});t=await r.text()}catch(e){if(a<4){await sleep(700*2**a);continue}throw e}
+ if((r.status>=500||r.status==429)&&a<4){await sleep(700*2**a);continue}
+ if(!r.ok){const e=new Error(t);e.status=r.status;try{e.j=JSON.parse(t)}catch(_){}throw e}
+ return{data:t?JSON.parse(t):[],res:r}}}
+async function countOf(t,c){try{const{res}=await rest(t+'?select='+(c||'*')+'&limit=1',{h:{Prefer:'count=exact'}});const m=/\/(\d+)$/.exec(res.headers.get('content-range')||'');return m?+m[1]:null}catch(e){return null}}
+async function schema(){try{const r=await fetch(SB+'/rest/v1/',{headers:{...HD(),Accept:'application/openapi+json'}});if(!r.ok)return null;const j=await r.json(),o={};for(const[t,d]of Object.entries(j.definitions||{})){const p=d.properties||{};o[t]={pk:Object.entries(p).filter(([,x])=>/<pk\/>/.test(x.description||'')).map(([c])=>c)}}return Object.keys(o).length?o:null}catch(e){return null}}
+async function tableList(sch){const out={dump:[],order:[],missing:[]};const have=async t=>{if(sch&&sch[t]&&sch[t].pk.length)return sch[t].pk;try{await rest(t+'?select=id&limit=1');return['id']}catch(e){if(e.status==404||/42P01|PGRST205|PGRST200/.test(JSON.stringify(e.j||'')))return undefined;return null}};
+ const extra=sch?Object.keys(sch).filter(t=>!KNOWN.includes(t)):[],kn=[];
+ for(const t of KNOWN){const pk=await have(t);if(pk===undefined){out.missing.push(t);continue}kn.push({t,pk,known:true})}
+ out.order=kn.map(x=>x.t);for(const t of extra)out.dump.push({t,pk:sch[t].pk.length?sch[t].pk:null,known:false});out.dump.push(...kn.slice().reverse());return out}
+// ---------- قراءة صفحات الجدول بمفتاح تصاعدي (لا تفقد ولا تكرر) ----------
+async function*rowsOf(t,pk,cols){const sel=cols||'*';
+ if(pk&&pk.length==1){const k=pk[0];let last=null;for(;;){const{data}=await rest(`${t}?select=${sel}&order=${k}.asc&limit=1000`+(last!=null?`&${k}=gt.${encodeURIComponent(last)}`:''));if(!data.length)return;yield data;last=data[data.length-1][k]}}
+ else{let o=0;const ord=pk&&pk.length?'&order='+pk.map(c=>c+'.asc').join(','):'';for(;;){const{data}=await rest(`${t}?select=${sel}${ord}&limit=1000&offset=${o}`);if(!data.length)return;yield data;o+=data.length}}}
+// ---------- الكتابة والقراءة: مجلد على الجهاز أو ملف ZIP ----------
+async function dirWriter(root,name){const base=await root.getDirectoryHandle(name,{create:true});
+ return{name,async write(path,data){const ps=path.split('/'),fn=ps.pop();let h=base;for(const p of ps)h=await h.getDirectoryHandle(p,{create:true});const f=await h.getFileHandle(fn,{create:true}),w=await f.createWritable();await w.write(data);await w.close()},async finish(){}}}
+function zipWriter(name){if(!window.JSZip)throw Error('تعذر تحميل مكتبة ZIP — تحقق من الاتصال بالإنترنت');const z=new JSZip();
+ return{name,async write(p,d){z.file(name+'/'+p,d)},async finish(){const b=await z.generateAsync({type:'blob',compression:'DEFLATE'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name+'.zip';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}}}
+async function dirReader(h){const get=async p=>{const ps=p.split('/'),fn=ps.pop();let d=h;for(const x of ps)d=await d.getDirectoryHandle(x);return(await d.getFileHandle(fn)).getFile()};
+ return{kind:'dir',name:h.name,text:async p=>(await get(p)).text(),blob:async p=>get(p),async exists(p){try{await get(p);return true}catch(e){return false}}}}
+async function zipReader(file){if(!window.JSZip)throw Error('تعذر تحميل مكتبة ZIP');const z=await JSZip.loadAsync(file),mp=Object.keys(z.files).find(k=>/(^|\/)manifest\.json$/.test(k));if(!mp)throw Error('الملف ليس نسخة احتياطية صالحة (لا يوجد manifest.json)');const pre=mp.slice(0,-'manifest.json'.length);
+ return{kind:'zip',name:file.name,text:async p=>z.file(pre+p).async('string'),blob:async p=>z.file(pre+p).async('blob'),async exists(p){return!!z.file(pre+p)}}}
+const idb=(m,k,v)=>new Promise((res,rej)=>{const o=indexedDB.open('bkdb',1);o.onupgradeneeded=()=>o.result.createObjectStore('s');o.onerror=()=>rej(o.error);o.onsuccess=()=>{const st=o.result.transaction('s',m=='get'?'readonly':'readwrite').objectStore('s'),r=m=='get'?st.get(k):st.put(v,k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}});
+async function pickDir(){try{const h=await showDirectoryPicker({mode:'readwrite',id:'bkroot'});ROOT=h;try{await idb('put','root',h)}catch(_){}$('#dirn').textContent='📁 '+h.name;log('تم اختيار مجلد الحفظ: '+h.name);scanRoot()}catch(e){if(e.name!='AbortError')msg(errT(e),1)}}
+async function needPerm(h,m){if(!h.queryPermission)return true;if(await h.queryPermission({mode:m})=='granted')return true;return await h.requestPermission({mode:m})=='granted'}
+async function pool(items,n,fn){let i=0;await Promise.all(Array.from({length:Math.min(n,items.length)},async()=>{while(i<items.length){const k=i++;await fn(items[k],k)}}))}
+function busy(v,id){BUSY=v;['bbk','rgo','rchk'].forEach(x=>$('#'+x).disabled=v);$('#bstop').classList.toggle('hide',!v);window.onbeforeunload=v?e=>{e.preventDefault();e.returnValue=''}:null}
+// ====================== إنشاء النسخة ======================
+async function doBackup(o={}){if(BUSY&&!o.inner)return;const pg=o.prog||'prog';if(!o.inner){busy(true);STOP=false;$('#bsum').innerHTML=''}
+ try{if(FS){if(!ROOT)throw Error('اختر مجلد الحفظ أولًا');if(!await needPerm(ROOT,'readwrite'))throw Error('لم يُمنح إذن الكتابة في المجلد')}
+  const d=new Date(),nm=(o.prefix||'backup_')+fmtD(d),W=FS?await dirWriter(ROOT,nm):zipWriter(nm);log('بدء النسخة: '+nm);
+  const sch=await schema(),T=await tableList(sch);if(T.missing.length)log('جداول غير موجودة في قاعدة البيانات الحالية: '+T.missing.join('، '),'w');
+  const man={format:1,kind:'university-suppliers-backup',created_at:d.toISOString(),created_by:U.full_name,source:SB,restore_order:T.order,tables:{},images:{files:{},failed:[]},warnings:[]};const imgs=new Set();let ix=0;
+  for(const ti of T.dump){ix++;const before=await countOf(ti.t,ti.pk&&ti.pk[0]),info={known:ti.known,pk:ti.pk,count_before:before,rows:0,files:[]};let part=0;
+   for await(const page of rowsOf(ti.t,ti.pk)){if(STOP)throw Error('أُوقفت العملية');part++;const text=page.map(r=>JSON.stringify(r)).join('\n')+'\n',f=`data/${ti.t}/part-${pad(part,5)}.jsonl`;await W.write(f,text);info.files.push({f,rows:page.length,sha256:await sha(text)});info.rows+=page.length;let m;IMGRE.lastIndex=0;while((m=IMGRE.exec(text)))imgs.add(m[1]);say(pg,`(${ix}/${T.dump.length}) ${TN[ti.t]||ti.t}: ${info.rows}${before!=null?' / '+before:''} سجل`)}
+   info.count_after=await countOf(ti.t,ti.pk&&ti.pk[0]);man.tables[ti.t]=info;
+   if(info.count_after!=null&&info.rows!=info.count_after){const w=`جدول ${ti.t}: نُسخ ${info.rows} والعدد الحالي ${info.count_after} (تغيّرت البيانات أثناء النسخ) — أعد النسخة وقت قلة الاستخدام`;man.warnings.push(w);log(w,'w')}
+   else log(`${TN[ti.t]||ti.t}: ${info.rows} سجل ✓`,'k')}
+  if(o.images!==false&&$('#wimg').checked){const L=[...imgs];let n=0;log('نسخ صور الفواتير: '+L.length);
+   await pool(L,4,async nme=>{if(STOP)throw Error('أُوقفت العملية');try{const r=await fetch(SB+IMGP+nme);if(!r.ok){man.images.failed.push({name:nme,status:r.status});return}const b=await r.blob();await W.write('images/'+nme,b);man.images.files[nme]={size:b.size,type:b.type||r.headers.get('content-type')||'',sha256:await shaBuf(await b.arrayBuffer())}}catch(e){man.images.failed.push({name:nme,error:String(e.message||e)})}n++;if(n%10==0||n==L.length)say(pg,`الصور: ${n} / ${L.length}`)});
+   if(man.images.failed.length){const w='تعذر نسخ '+man.images.failed.length+' صورة (محذوفة أو غير متاحة)';man.warnings.push(w);log(w,'w')}}
+  else{man.images.skipped=true;man.images.referenced=[...imgs]}
+  await W.write('README.txt','نسخة احتياطية لنظام مدفوعات الموردين\nالتاريخ: '+d.toLocaleString('ar-EG')+'\nلا تعدّل أي ملف داخل هذا المجلد. تُستعاد من صفحة «النسخ الاحتياطي» في النظام.\nmanifest.json يحتوي بصمة كل ملف للتحقق من سلامته.\n');
+  await W.write('manifest.json',JSON.stringify(man,null,1));await W.finish();
+  const tot=Object.values(man.tables).reduce((s,x)=>s+x.rows,0);say(pg,'اكتملت النسخة ✓');log(`اكتملت النسخة ${nm}: ${tot} سجل و${Object.keys(man.images.files).length} صورة`,'k');
+  if(!o.inner){$('#bsum').innerHTML=sumTable(man)+(man.warnings.length?'<div class="msg e">'+man.warnings.map(E).join('<br>')+'</div>':'<div class="msg">النسخة مكتملة وتطابق أعداد الجداول. '+(FS?'المسار: '+E(ROOT.name)+' / '+E(nm):'تم تنزيل ملف ZIP على الجهاز.')+'</div>');scanRoot()}
+  return{man,name:nm}}
+ catch(e){log('فشلت النسخة: '+errT(e),'e');say(pg,'فشلت النسخة');if(o.inner)throw e;msg(errT(e),1)}
+ finally{if(!o.inner)busy(false)}}
+function sumTable(m){return`<table class="rt"><tr><th>الجدول</th><th>السجلات</th><th>ملفات</th></tr>${Object.entries(m.tables).map(([t,x])=>`<tr><td>${E(TN[t]||t)}</td><td>${x.rows}</td><td>${x.files.length}</td></tr>`).join('')}<tr><td>صور الفواتير</td><td>${Object.keys(m.images.files).length}</td><td></td></tr></table>`}
+// ====================== اختيار نسخة للاستعادة ======================
+async function scanRoot(){const s=$('#rsel');s.innerHTML='<option value="">— اختر نسخة —</option>';if(!FS||!ROOT)return;try{if(!await needPerm(ROOT,'read'))return;const L=[];for await(const[n,h]of ROOT.entries()){if(h.kind!='directory')continue;try{const f=await(await h.getFileHandle('manifest.json')).getFile(),m=JSON.parse(await f.text());L.push({n,h,m})}catch(_){}}
+ L.sort((a,b)=>b.m.created_at.localeCompare(a.m.created_at));window.BKL=L;L.forEach((x,i)=>{const o=document.createElement('option');o.value=i;o.textContent=x.n+' — '+new Date(x.m.created_at).toLocaleString('ar-EG');s.appendChild(o)})}catch(e){log('تعذر قراءة مجلد الحفظ: '+errT(e),'w')}}
+async function selBackup(){const i=$('#rsel').value;if(i==='')return;const x=window.BKL[+i];await setCur(await dirReader(x.h))}
+async function openOther(){try{const h=await showDirectoryPicker({mode:'read'});await setCur(await dirReader(h))}catch(e){if(e.name!='AbortError')msg(errT(e),1)}}
+async function openZip(f){if(!f)return;try{await setCur(await zipReader(f))}catch(e){msg(errT(e),1)}}
+async function setCur(R){try{const man=JSON.parse(await R.text('manifest.json'));if(man.format!==1||man.kind!='university-suppliers-backup')throw Error('صيغة النسخة غير مدعومة');CUR={R,man};
+ $('#rinfo').innerHTML=`<div class="msg"><b>${E(R.name)}</b><br>تاريخ النسخة: ${new Date(man.created_at).toLocaleString('ar-EG')} • أنشأها: ${E(man.created_by||'')}</div>`+sumTable(man)+(man.warnings&&man.warnings.length?'<div class="msg e">تنبيهات وقت النسخة:<br>'+man.warnings.map(E).join('<br>')+'</div>':'');
+ ['rchk','rmode'].forEach(x=>$('#'+x).classList.remove('hide'));$('#rres').innerHTML='';say('rprog','')}catch(e){CUR=null;['rchk','rmode'].forEach(x=>$('#'+x).classList.add('hide'));msg(errT(e),1)}}
+// ====================== فحص سلامة النسخة ======================
+async function checkBackup(o={}){if(!CUR)return;const{R,man}=CUR;if(!o.inner){busy(true)}let bad=[];
+ try{say('rprog','جارٍ فحص السلامة…');let n=0;
+  for(const[t,info]of Object.entries(man.tables)){let rows=0;for(const f of info.files){let tx;try{tx=await R.text(f.f)}catch(e){bad.push(`ملف مفقود: ${f.f}`);continue}if(await sha(tx)!=f.sha256)bad.push(`بصمة غير مطابقة (ملف تالف): ${f.f}`);const c=tx.split('\n').filter(Boolean).length;if(c!=f.rows)bad.push(`عدد السجلات غير مطابق في ${f.f}`);rows+=c;n++;if(STOP)throw Error('أُوقفت العملية')}if(rows!=info.rows)bad.push(`إجمالي ${t} لا يطابق المسجَّل`)}
+  const im=Object.entries(man.images.files);let k=0;for(const[nm,x]of im){k++;if(k%20==0)say('rprog',`فحص الصور ${k}/${im.length}`);try{const b=await R.blob('images/'+nm);if(b.size!=x.size||await shaBuf(await b.arrayBuffer())!=x.sha256)bad.push('صورة تالفة: '+nm)}catch(e){bad.push('صورة مفقودة: '+nm)}}
+  if(bad.length){log('فحص السلامة: وُجدت '+bad.length+' مشكلة','e');bad.slice(0,30).forEach(b=>log(b,'e'));say('rprog','النسخة غير سليمة ✗');if(!o.inner)msg('النسخة غير سليمة: '+bad[0]+(bad.length>1?' (+'+(bad.length-1)+' أخرى)':''),1);return false}
+  log('فحص السلامة: كل الملفات سليمة ومطابقة للبصمات ✓','k');say('rprog','النسخة سليمة ✓');if(!o.inner)msg('النسخة سليمة ومطابقة للبصمات');return true}
+ catch(e){log('تعذر الفحص: '+errT(e),'e');if(!o.inner)msg(errT(e),1);return false}finally{if(!o.inner)busy(false)}}
+// ====================== الاستعادة ======================
+async function*backupRows(R,info){for(const f of info.files){const tx=await R.text(f.f);yield tx.split('\n').filter(Boolean).map(l=>JSON.parse(l))}}
+async function upsert(t,pk,rows,ST){const body=ST.strip[t]&&ST.strip[t].size?rows.map(r=>omit(r,ST.strip[t])):rows;await rest(t+(pk?'?on_conflict='+pk.join(','):''),{method:'POST',body:JSON.stringify(body),h:{Prefer:'resolution=merge-duplicates,return=minimal'}})}
+async function put(t,pk,rows,ST){try{await upsert(t,pk,rows,ST)}catch(e){const j=e.j||{},code=j.code,tx=j.message||e.message||'',m=/column "([^"]+)"/.exec(tx)||/'([^']+)' column/.exec(tx);
+  if(m&&['428C9','PGRST204','42703'].includes(code)&&!(ST.strip[t]&&ST.strip[t].has(m[1]))){(ST.strip[t]=ST.strip[t]||new Set()).add(m[1]);ST.notes.push(`جدول ${t}: تم تجاوز العمود ${m[1]} (غير قابل للكتابة أو غير موجود حاليًا)`);return put(t,pk,rows,ST)}
+  if(code=='23503'){if(rows.length>1){for(const r of rows)await put(t,pk,[r],ST);return}ST.deferred.push({t,pk,row:rows[0],err:tx});return}
+  throw e}}
+async function doRestore(){if(BUSY||!CUR)return;const mode=document.querySelector('input[name=md]:checked').value;if($('#rconf').value.trim()!='استعادة')return msg('اكتب كلمة «استعادة» للتأكيد',1);
+ const{R,man}=CUR;if(!confirm((mode=='mirror'?'مطابقة كاملة: سيُحذف من النظام كل ما أُضيف بعد تاريخ هذه النسخة.\n':'دمج: ستُضاف السجلات وتُحدَّث بقيم النسخة.\n')+'تُؤخذ أولًا نسخة أمان من الوضع الحالي. متابعة؟'))return;
+ busy(true);STOP=false;$('#rres').innerHTML='';const ST={strip:{},notes:[],deferred:[]},KEYS={};
+ try{if(FS&&!ROOT)throw Error('اختر مجلد الحفظ أولًا (تُحفظ فيه نسخة الأمان)');
+  log('١/٥ فحص سلامة النسخة','k');if(!await checkBackup({inner:true}))throw Error('النسخة غير سليمة — لم يتم تغيير أي شيء');
+  say('rprog','٢/٥ أخذ نسخة أمان من الوضع الحالي…');log('٢/٥ نسخة أمان قبل الاستعادة');const sb=await doBackup({inner:true,prefix:'pre_restore_',images:false,prog:'rprog'});log('نسخة الأمان: '+sb.name,'k');
+  const sch=await schema(),cur=await tableList(sch),curSet=new Set(cur.order),order=(man.restore_order||KNOWN).filter(t=>man.tables[t]&&curSet.has(t));
+  const skipped=Object.keys(man.tables).filter(t=>!order.includes(t));if(skipped.length)log('جداول لن تُستعاد (غير معروفة أو غير موجودة حاليًا): '+skipped.join('، '),'w');
+  const PK={};cur.dump.forEach(x=>PK[x.t]=x.pk);
+  log('٣/٥ استعادة البيانات بترتيب الارتباطات');let ti=0;
+  for(const t of order){ti++;const info=man.tables[t],pk=PK[t]&&PK[t].length?PK[t]:(info.pk&&info.pk.length?info.pk:null);KEYS[t]=new Set();let n=0;
+   if(!pk){log(`${t}: بلا مفتاح أساسي — يُستبدل محتواه بالكامل`,'w');await rest(t+'?id=not.is.null',{method:'DELETE'}).catch(()=>{})}
+   const send=async rows=>{rows=rows.map(rewriteImg);for(let i=0;i<rows.length;i+=200){if(STOP)throw Error('أُوقفت العملية');await put(t,pk,rows.slice(i,i+200),ST)}if(pk)rows.forEach(r=>KEYS[t].add(pkv(r,pk)));n+=rows.length;say('rprog',`٣/٥ (${ti}/${order.length}) ${TN[t]||t}: ${n} / ${info.rows}`)};
+   if(t=='accounts'){let all=[];for await(const p of backupRows(R,info))all=all.concat(p);const by=new Map(all.map(r=>[r.id,r])),dp=r=>{let d=0,x=r,g=0;while(x&&x.parent_id&&g++<20){x=by.get(x.parent_id);d++}return d};all.sort((a,b)=>dp(a)-dp(b));await send(all)}
+   else for await(const p of backupRows(R,info))await send(p);
+   log(`${TN[t]||t}: ${n} سجل`,'k')}
+  for(let pass=1;ST.deferred.length&&pass<=6;pass++){const L=ST.deferred.splice(0);log(`إعادة محاولة ${L.length} سجل مؤجَّل (ارتباطات) — جولة ${pass}`,'w');for(const x of L)await put(x.t,x.pk,[x.row],ST)}
+  if(ST.deferred.length)throw Error('تعذر استعادة '+ST.deferred.length+' سجل بسبب ارتباطات غير موجودة: '+ST.deferred[0].t+' — '+ST.deferred[0].err);
+  const im=Object.entries(man.images.files);if(im.length){log('٤/٥ استعادة صور الفواتير');let k=0,up=0;await pool(im,3,async([nm,x])=>{if(STOP)throw Error('أُوقفت العملية');k++;if(k%10==0)say('rprog',`٤/٥ الصور ${k}/${im.length}`);try{const h=await fetch(SB+IMGP+nm,{method:'HEAD'});if(h.ok)return}catch(_){}const b=await R.blob('images/'+nm),r=await fetch(`${SB}/storage/v1/object/photo/${nm}`,{method:'POST',headers:{...HD(),'Content-Type':x.type||'application/octet-stream','x-upsert':'true'},body:b});if(!r.ok)ST.notes.push('تعذر رفع الصورة '+nm+': '+(await r.text()).slice(0,120));else up++});log(`الصور: أُعيد رفع ${up} وبقية الصور موجودة`,'k')}
+  if(mode=='mirror'){log('مطابقة كاملة: حذف ما لا توجد له نسخة (الأبناء أولًا)');let del=0;
+   for(const t of order.slice().reverse()){const pk=PK[t]&&PK[t].length==1?PK[t][0]:null;if(!pk)continue;const keep=KEYS[t],extra=[];for await(const pg of rowsOf(t,[pk],pk))for(const r of pg){const v=String(r[pk]);if(!keep.has(v)&&!(t=='users'&&v==String(U.id)))extra.push(v)}
+    for(let i=0;i<extra.length;i+=50){await rest(`${t}?${pk}=in.(${extra.slice(i,i+50).map(encodeURIComponent).join(',')})`,{method:'DELETE'});del+=Math.min(50,extra.length-i)}if(extra.length)log(`${TN[t]||t}: حُذف ${extra.length} سجل غير موجود في النسخة`,'w')}
+   log('إجمالي المحذوف: '+del,'k')}
+  say('rprog','٥/٥ التحقق من مطابقة كل سجل…');log('٥/٥ التحقق: مقارنة كل سجل بالنسخة');const rep=[];
+  for(const t of order){const info=man.tables[t],pk=PK[t]&&PK[t].length?PK[t]:(info.pk&&info.pk.length?info.pk:null),sp=ST.strip[t];if(!pk){rep.push({t,b:info.rows,c:'—',miss:'—',diff:'—',extra:'—'});continue}
+   const H=new Map();for await(const p of backupRows(R,info))p.forEach(r=>{r=omit(rewriteImg(r),sp);H.set(pkv(r,pk),h53(canon(r)))});
+   let c=0,diff=0,extra=0,ok=0;for await(const pg of rowsOf(t,pk)){for(let r of pg){c++;r=omit(r,sp);const k=pkv(r,pk),h=H.get(k);if(h===undefined)extra++;else if(h!=h53(canon(r)))diff++;else ok++}}
+   rep.push({t,b:H.size,c,miss:H.size-ok-diff,diff,extra:mode=='mirror'?extra:extra})}
+  const bad=rep.filter(x=>x.miss>0||x.diff>0||(mode=='mirror'&&x.extra>0));
+  $('#rres').innerHTML=`<div class="msg ${bad.length?'e':''}">${bad.length?'اكتملت الاستعادة مع فروق تحتاج مراجعة':'اكتملت الاستعادة ✓ وطابقت كل السجلات النسخة تمامًا'}</div><table class="rt"><tr><th>الجدول</th><th>في النسخة</th><th>الآن</th><th>ناقص</th><th>مختلف</th><th>زائد${mode=='merge'?' (مسموح في الدمج)':''}</th></tr>${rep.map(x=>`<tr><td>${E(TN[x.t]||x.t)}</td><td>${x.b}</td><td>${x.c}</td><td class="${x.miss>0?'bad':'good'}">${x.miss}</td><td class="${x.diff>0?'bad':'good'}">${x.diff}</td><td class="${mode=='mirror'&&x.extra>0?'bad':''}">${x.extra}</td></tr>`).join('')}</table>`+(ST.notes.length?'<div class="msg e">'+ST.notes.map(E).join('<br>')+'</div>':'')+(man.images.failed&&man.images.failed.length?`<div class="msg e">تنبيه: ${man.images.failed.length} صورة لم تُنسخ وقت أخذ النسخة.</div>`:'')+`<div class="msg">نسخة الأمان (قبل الاستعادة): ${E(sb.name)}</div>`;
+  ST.notes.forEach(n=>log(n,'w'));say('rprog',bad.length?'انتهت مع فروق ✗':'اكتملت الاستعادة ✓');log(bad.length?'انتهت الاستعادة مع فروق — راجع الجدول':'اكتملت الاستعادة وطابقت كل السجلات ✓',bad.length?'w':'k');
+  try{await audit('استعادة نسخة احتياطية','backup',null,null,null,{'النسخة':R.name,'الطريقة':mode=='mirror'?'مطابقة كاملة':'دمج','فروق':bad.length})}catch(e){log(errT(e),'w')}
+  msg(bad.length?'اكتملت الاستعادة مع فروق — راجع الجدول':'اكتملت الاستعادة بنجاح وطابقت كل السجلات',!!bad.length)}
+ catch(e){log('توقفت الاستعادة: '+errT(e),'e');say('rprog','توقفت الاستعادة ✗');$('#rres').innerHTML='<div class="msg e">'+E(errT(e))+'<br>يمكنك إعادة المحاولة (الاستعادة آمنة للتكرار)، ونسخة الأمان محفوظة في مجلد الحفظ.</div>';msg(errT(e),1)}
+ finally{busy(false)}}
+// ---------- تهيئة الصفحة ----------
+(async()=>{$('#env').textContent=FS?'اختر مجلدًا على جهازك، وستُحفظ كل نسخة داخله في مجلد جديد باسم التاريخ والوقت.':'هذا المتصفح لا يدعم اختيار مجلد: ستُحفظ النسخة كملف ZIP واحد يُنزَّل على الجهاز. للاختيار الحر للمسار استخدم Chrome أو Edge على الحاسوب.';
+ if(!FS){$('#bpick').classList.add('hide');return}
+ try{const h=await idb('get','root');if(h){ROOT=h;$('#dirn').textContent='📁 '+h.name;scanRoot()}}catch(_){}})();
+</script></body></html>

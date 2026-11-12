@@ -26,7 +26,7 @@
 <section id="p4" class="hide"><button class="back noprint" onclick="tab(0)">→ رجوع للتبويبات</button><div id="cwt"></div></section></main>
 <datalist id="dlc"></datalist>
 <div id="ov" class="ov hide"><div class="md"><h2><span id="mt"></span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="me" class="msg e hide"></div><div class="grid"><button class="b" id="ms">تأكيد</button><button class="b g" onclick="cl()">إلغاء</button></div></div></div>
-<script src="js/app.js?v=39"></script><script>
+<script src="js/app.js?v=40"></script><script>
 const U=guard(['treasury','manager','admin']);
 let INV=[],CM={},SP={},REC=[],TAB=0,FIL='all',PREV=null,MINE=new Map(),busy=false,pend=false,lt;
 const Q='invoices?select=*,suppliers(name,code,phone),contracts(title,late_rate,grace_day,late_fee),contract_months(month),cr:users!invoices_created_by_fkey(full_name,role),payments(id,amount,status,created_at,fee)&dest=eq.treasury&apv=eq.approved&src=is.null&order=created_at.desc';

@@ -5,7 +5,7 @@
 <div class="card"><h2>رفع المعاملات السابقة (Excel)</h2><small>يدعم الملف: (١) «كشف حساب المورد» كما يصدر من النظام، (٢) «مدفوعات وإيرادات الموظف»، (٣) نموذج الاستيراد (الاسم والكود المرجعي للفاتورة والنوع والمبلغ والتاريخ فقط مطلوبة؛ كود المورد والهاتف والمجال والعقد اختيارية). تُقرأ التواريخ بأي صيغة. مدفوعات = مدفوع إلى، إيداعات = إيراد من، فاتورة = غير مدفوعة حتى اعتماد الدفع أو الحذف. تظهر مراجعة قبل الحفظ، والمكرر لا يُرفع.</small>
 <button class="b g" style="margin-bottom:8px" onclick="tpl()">تحميل النموذج المخصص (اختياري)</button><input id="f" type="file" accept=".xlsx,.xls"><button class="b" onclick="imp()">رفع واستيراد</button></div>
 <div id="res"></div></main>
-<script src="js/app.js?v=39"></script><script src="js/importer.js?v=16"></script><script>
+<script src="js/app.js?v=40"></script><script src="js/importer.js?v=16"></script><script>
 const U=guard(['admin']);
 function imp(){importXlsx($('#f').files[0],U,'approved')}
 </script></body></html>

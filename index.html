@@ -4,7 +4,7 @@
 <main><div class="card" style="max-width:420px;margin:30px auto"><h2>تسجيل الدخول</h2><div id="msg" class="hide"></div>
 <label>اسم المستخدم</label><input id="u" autocomplete="username"><label>كلمة المرور</label><input id="p" type="password" autocomplete="current-password">
 <button class="b" onclick="login()">دخول</button></div></main>
-<script src="js/app.js?v=39"></script><script>
+<script src="js/app.js?v=40"></script><script>
 async function login(){try{const q=`users?username=eq.${encodeURIComponent($('#u').value.trim())}&password=eq.${encodeURIComponent($('#p').value)}&active=eq.true&select=id,full_name,role`;let r;try{r=await api(q+',perms')}catch(e){r=await api(q)}
 if(!r.length){$('#msg').className='msg e';return $('#msg').textContent='بيانات الدخول غير صحيحة'}
 sessionStorage.setItem('u',JSON.stringify(r[0]));const P=r[0].perms||{},pg=(r[0].role!='admin'&&Array.isArray(P.pages)&&P.pages.length)?P.pages:null;location.href=(pg&&!pg.includes(home[r[0].role]))?pg[0]:home[r[0].role]}catch(e){$('#msg').className='msg e';$('#msg').textContent='تعذر الاتصال: '+e.message}}

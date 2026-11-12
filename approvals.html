@@ -2,7 +2,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=25"></head><body>
 <main><div id="msg" class="hide"></div><div id="home" class="cards"></div><section id="sec" class="hide"><button class="back" onclick="tab(0)">→ رجوع للتبويبات</button><div class="card frm" id="list"></div></section></main>
 <div id="ov" class="ov hide"><div class="md"><h2><span>آخر فاتورة للشخص</span><button onclick="cl()">×</button></h2><div id="mb"></div><div id="mact" class="grid"></div></div></div>
-<script src="js/app.js?v=39"></script><script>
+<script src="js/app.js?v=40"></script><script>
 const U=guard(['manager','admin']);let T=1;const E=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const SEL='select=*,invoices(id,supplier_id,account_id,payments(status),code,amount,description,image_url,created_at,ic:users!invoices_created_by_fkey(full_name),suppliers(name,code),contracts(title)),cr:users!payments_created_by_fkey(full_name),ap:users!payments_approved_by_fkey(full_name)';
 async function homeDraw(){let n='…',m='…';try{n=(await api('payments?status=eq.pending&select=id,invoices(account_id)')).filter(x=>canApv((x.invoices||{}).account_id)).length}catch(e){}try{m=(await api('invoices?apv=eq.pending&select=id,account_id')).filter(x=>canApv(x.account_id)).length}catch(e){}
