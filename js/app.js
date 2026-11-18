@@ -229,19 +229,36 @@ function balSummary(box,cfg){
 let ACC=[];const AFM={};
 async function accLoad(force){if(force||!ACC.length)ACC=await apiAll('accounts?select=*&order=code');return ACC}
 const accById=id=>ACC.find(a=>a.id==id);
-function accPath(id){const a=accById(id);if(!a)return'';const p=a.parent_id?accById(a.parent_id):null;return p?p.name+' › '+a.name:a.name}
+
 const accLabel=a=>a.code+' — '+accPath(a.id);
-function accTree(){const cmp=(x,y)=>String(x.code).localeCompare(String(y.code),'en',{numeric:true}),o=[];ACC.filter(a=>!a.parent_id).sort(cmp).forEach(m=>{o.push(m);ACC.filter(a=>a.parent_id==m.id).sort(cmp).forEach(s=>o.push(s))});return o}
+const accCmp=(x,y)=>String(x.code).localeCompare(String(y.code),'en',{numeric:true});
+// أبناء حساب مباشرون (null = الحسابات الرئيسية)
+const accKids=id=>ACC.filter(a=>(a.parent_id||null)==(id||null)).sort(accCmp);
+// كل الأبناء بكل المستويات (بلا الحساب نفسه) — آمن ضد الحلقات
+function accDesc(id){const out=[],seen=new Set([id]),st=[id];while(st.length){const p=st.pop();ACC.forEach(a=>{if(a.parent_id==p&&!seen.has(a.id)){seen.add(a.id);out.push(a);st.push(a.id)}})}return out}
+// الأسلاف من الجذر إلى الأب المباشر
+function accAnc(id){const o=[],seen=new Set();let a=accById(id);while(a&&a.parent_id&&!seen.has(a.id)){seen.add(a.id);a=accById(a.parent_id);if(a)o.unshift(a)}return o}
+const accDepth=id=>accAnc(id).length;
+const accRoot=id=>{const an=accAnc(id);return an.length?an[0]:accById(id)};
+// المسار الكامل: أب › ابن › حفيد ...
+function accPath(id){const a=accById(id);if(!a)return'';return [...accAnc(id),a].map(x=>x.name).join(' › ')}
+// الشجرة كقائمة مسطحة بترتيب العرض (الحساب ثم فروعه بكل المستويات)
+function accTree(){const o=[],seen=new Set(),walk=(a)=>{if(seen.has(a.id))return;seen.add(a.id);o.push(a);accKids(a.id).forEach(walk)};accKids(null).forEach(walk);ACC.slice().sort(accCmp).forEach(a=>{if(!seen.has(a.id))walk(a)});return o}
+// الحساب مع كل فروعه بترتيب العرض (للتقارير)
+function accSubtree(id){const a=accById(id);if(!a)return[];const o=[],seen=new Set(),walk=x=>{if(seen.has(x.id))return;seen.add(x.id);o.push(x);accKids(x.id).forEach(walk)};walk(a);return o}
+// كود مقترح لحساب جديد تحت pid (فارغ = حساب رئيسي) مع ضمان عدم التكرار
+function accSugCode(pid){if(!pid){const n=ACC.filter(x=>!x.parent_id).map(x=>parseInt(x.code)).filter(isFinite);let c=(n.length?Math.max(...n):0)+1;while(ACC.some(x=>nz(x.code)==nz(String(c))))c++;return String(c)}
+ const p=accById(pid),mx=Math.max(0,...ACC.filter(x=>x.parent_id==pid).map(x=>{const m=String(x.code).match(/(\d+)$/);return m?+m[1]:0})),pre=p?p.code:'';let n=mx+1,c;do{c=pre+'-'+String(n++).padStart(2,'0')}while(ACC.some(x=>nz(x.code)==nz(c)));return c}
 function acctVal(id){const m=AFM[id],el=document.querySelector('#'+id);return m&&el?(m.get(el.value.trim())||null):null}
 // حقل «اسم الحساب» مع إمكانية إضافة حساب رئيسي/فرعي جديد من نفس الموضع. o:{id,label,addOnly,onSaved}
 function acctField(box,o){const id=o.id,q=s=>box.querySelector('[data-a='+s+']'),E=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
  box.innerHTML=`<div ${o.addOnly?'class="hide"':''}><label>${o.label||'اسم الحساب'}</label><div style="display:flex;gap:6px;align-items:stretch"><input id="${id}" list="${id}dl" autocomplete="off" placeholder="ابحث بكود الحساب أو اسمه" style="flex:1"><button type="button" class="b s g" data-a="plus" style="margin:0;white-space:nowrap">+ حساب جديد</button></div><datalist id="${id}dl"></datalist></div>${o.addOnly?'<button type="button" class="b s g" data-a="plus2">+ إضافة حساب جديد</button>':''}
-<div data-a="nf" class="card hide" style="margin-top:8px"><b>إضافة حساب جديد</b><label>الحساب الرئيسي (اتركه فارغًا لإنشاء حساب رئيسي)</label><select data-a="par"></select><div class="grid"><div><label>الكود</label><input data-a="cd"></div><div><label>الاسم</label><input data-a="nm"></div></div><div data-a="kw"><label>نوع الحساب</label><select data-a="kd"><option value="expense">مصروف</option><option value="revenue">إيراد</option></select></div><div class="grid"><button type="button" class="b" data-a="sv">حفظ الحساب</button><button type="button" class="b g" data-a="cx">إلغاء</button></div><div data-a="er" class="msg e hide"></div></div>`;
- const sug=()=>{const pid=q('par').value;if(!pid){const n=ACC.filter(x=>!x.parent_id).map(x=>parseInt(x.code)).filter(isFinite);return String((n.length?Math.max(...n):0)+1)}const p=accById(pid),mx=Math.max(0,...ACC.filter(x=>x.parent_id==pid).map(x=>{const m=String(x.code).match(/(\d+)$/);return m?+m[1]:0}));return p.code+'-'+String(mx+1).padStart(2,'0')};
- function fill(){const T=accTree();AFM[id]=new Map(T.map(x=>[accLabel(x),x.id]));const dl=box.querySelector('#'+id+'dl');if(dl)dl.innerHTML=T.map(x=>`<option value="${E(accLabel(x))}">`).join('');q('par').innerHTML='<option value="">— حساب رئيسي جديد —</option>'+T.filter(x=>!x.parent_id).map(x=>`<option value="${x.id}">${E(x.code)} — ${E(x.name)}</option>`).join('')}
+<div data-a="nf" class="card hide" style="margin-top:8px"><b>إضافة حساب جديد</b><label>الحساب الأب (اتركه فارغًا لإنشاء حساب رئيسي، أو اختر أي حساب — رئيسي أو فرعي — ليتفرع منه)</label><select data-a="par"></select><div class="grid"><div><label>الكود</label><input data-a="cd"></div><div><label>الاسم</label><input data-a="nm"></div></div><div data-a="kw"><label>نوع الحساب</label><select data-a="kd"><option value="expense">مصروف</option><option value="revenue">إيراد</option></select></div><div class="grid"><button type="button" class="b" data-a="sv">حفظ الحساب</button><button type="button" class="b g" data-a="cx">إلغاء</button></div><div data-a="er" class="msg e hide"></div></div>`;
+ const sug=()=>accSugCode(q('par').value);
+ function fill(){const T=accTree();AFM[id]=new Map(T.map(x=>[accLabel(x),x.id]));const dl=box.querySelector('#'+id+'dl');if(dl)dl.innerHTML=T.map(x=>`<option value="${E(accLabel(x))}">`).join('');q('par').innerHTML='<option value="">— حساب رئيسي جديد —</option>'+T.map(x=>`<option value="${x.id}">${'— '.repeat(accDepth(x.id))}${E(x.code)} — ${E(x.name)}</option>`).join('')}
  const upd=()=>{q('cd').value=sug();q('kw').classList.toggle('hide',!!q('par').value)},open=()=>{q('nf').classList.remove('hide');q('nm').value='';q('er').className='msg e hide';upd()};
  q('plus').onclick=open;if(q('plus2'))q('plus2').onclick=open;q('par').onchange=upd;q('cx').onclick=()=>q('nf').classList.add('hide');
  q('sv').onclick=async()=>{const er=m=>{q('er').textContent=m;q('er').className='msg e'},cd=q('cd').value.trim(),nm=q('nm').value.trim(),pid=q('par').value||null;if(!cd||!nm)return er('أدخل كود الحساب واسمه');
-  try{await accLoad(true);if(ACC.some(x=>nz(x.code)==nz(cd)))return er('كود الحساب مستخدم من قبل');if(ACC.some(x=>(x.parent_id||null)==pid&&nz(x.name)==nz(nm)))return er('يوجد حساب بنفس الاسم تحت نفس الحساب الرئيسي');
+  try{await accLoad(true);if(ACC.some(x=>nz(x.code)==nz(cd)))return er('كود الحساب مستخدم من قبل');if(ACC.some(x=>(x.parent_id||null)==pid&&nz(x.name)==nz(nm)))return er('يوجد حساب بنفس الاسم تحت نفس الحساب الأب');
    const r=(await api('accounts','POST',{code:cd,name:nm,parent_id:pid,kind:pid?accById(pid).kind:q('kd').value,created_by:me().id}))[0];await accLoad(true);fill();const inp=box.querySelector('#'+id);if(inp)inp.value=accLabel(accById(r.id));q('nf').classList.add('hide');msg('تمت إضافة الحساب «'+nm+'»');if(o.onSaved)o.onSaved(r)}catch(e){er(errT(e))}};
  accLoad().then(fill).catch(e=>{const inp=box.querySelector('#'+id);if(inp)inp.placeholder='تعذر تحميل الحسابات — شغّل migration_v11_accounts.sql'})}
