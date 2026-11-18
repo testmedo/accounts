@@ -1,57 +1,68 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الحسابات</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=36"></head><body>
 <main><div id="msg" class="hide"></div>
-<div class="card frm"><h2>دليل الحسابات والقيم الافتتاحية</h2><small>حساب رئيسي له كود، ويتفرع منه حسابات فرعية لكل منها كود (مثال: تأمينات ← تأمينات اجتماعية • تأمينات طبية). يمكن داخل الحساب الرئيسي إنشاء مجموعات تضم حسابات فرعية عند الحاجة. أدخل هنا القيمة الافتتاحية وتاريخها لكل حساب. الحسابات تُضاف أيضًا من نموذج الفاتورة، وإيراد الطلاب يُنشأ تلقائيًا عند رفع ملف الطلاب.</small>
+<div class="card frm"><h2>دليل الحسابات والقيم الافتتاحية</h2><small>حساب رئيسي له كود، ويتفرع منه حسابات فرعية، ويمكن لأي حساب فرعي أن يتفرع بدوره إلى فروع أخرى بلا حد للمستويات (مثال: مصروفات ← رواتب ← رواتب إدارية ← رواتب الإدارة العليا). داخل أي حساب يمكن إنشاء مجموعات تضم فروعه المباشرة. أدخل هنا القيمة الافتتاحية وتاريخها لكل حساب. الحسابات تُضاف أيضًا من نموذج الفاتورة، وإيراد الطلاب يُنشأ تلقائيًا عند رفع ملف الطلاب.</small>
 <div id="af" style="margin-top:8px"></div></div>
-<div id="sm"></div><div id="l"></div>
+<div id="sm"></div>
+<div class="grid" style="margin-bottom:8px"><button class="b s g" style="width:100%" onclick="openAll()">فتح كل الحسابات</button><button class="b s g" style="width:100%" onclick="closeAll()">طي الكل</button></div>
+<div id="l"></div>
 <button class="b" onclick="saveAll()">حفظ كل التعديلات</button></main>
-<script src="js/app.js?v=40"></script><script>
+<script src="js/app.js?v=41"></script><script>
 const U=guard(['admin']);
 const HE=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),KIND_AR={expense:'مصروف',revenue:'إيراد'};
-const enc=n=>encodeURIComponent(n).replace(/'/g,'%27');
+const enc=n=>encodeURIComponent(n).replace(/'/g,'%27'),arS=(x,y)=>x.localeCompare(y,'ar'),COL=['var(--teal)','var(--gold)','#7a5fa8','#2f8394','#9b6b2f','#5a7d3a'];
 let INV_CNT={},GRP={},GOK=true;const OPEN=new Set();function tg(id,o){o?OPEN.add(id):OPEN.delete(id)}
 async function load(){try{await accLoad(true);const inv=await apiAll('invoices?select=account_id&account_id=not.is.null');INV_CNT={};inv.forEach(i=>INV_CNT[i.account_id]=(INV_CNT[i.account_id]||0)+1);
  try{const g=await apiAll('accounts?select=id,grp');GRP={};g.forEach(x=>GRP[x.id]=x.grp||'');GOK=true}catch(e){GOK=false;GRP={};msg('المجموعات غير مفعّلة — شغّل ملف migration_v12_account_groups.sql',1)}
  draw()}catch(e){msg(errT(e)+' — شغّل ملف migration_v11_accounts.sql',1)}}
-function form(a,gs){return `<div class="grid" style="margin-top:6px"><div><label>اسم الحساب</label><input id="n_${a.id}" value="${HE(a.name)}"></div><div><label>القيمة الافتتاحية</label><input id="o_${a.id}" type="number" inputmode="decimal" value="${+a.opening||0}"></div></div>
+const sibGroups=a=>GOK?[...new Set(accKids(a.parent_id).map(x=>GRP[x.id]).filter(Boolean))].sort(arS):[];
+function form(a){const gs=a.parent_id?sibGroups(a):null;
+ return `<div class="grid" style="margin-top:6px"><div><label>اسم الحساب</label><input id="n_${a.id}" value="${HE(a.name)}"></div><div><label>القيمة الافتتاحية</label><input id="o_${a.id}" type="number" inputmode="decimal" value="${+a.opening||0}"></div></div>
 <label>تاريخ القيمة الافتتاحية</label><input id="d_${a.id}" type="date" value="${a.opening_date||''}">
-${gs&&GOK?`<label>المجموعة</label><select id="g_${a.id}"><option value="">بدون مجموعة</option>${gs.map(g=>`<option value="${HE(g)}" ${g==GRP[a.id]?'selected':''}>${HE(g)}</option>`).join('')}</select>`:''}
-<div class="grid"><button class="b s" style="margin-top:8px;width:100%" onclick="save('${a.id}')">حفظ هذا الحساب</button><button class="b s r" style="margin-top:8px;width:100%" onclick="del('${a.id}')">حذف الحساب</button></div>${gs?'':mvUI(a)}`}
-function mvUI(a){const tg=ACC.filter(x=>!x.parent_id&&x.id!=a.id&&x.kind==a.kind);if(!tg.length||nz(a.name)==nz('إيراد الطلاب'))return '';const n=ACC.filter(x=>x.parent_id==a.id).length;
- return `<details style="margin-top:12px;border-top:1px dashed var(--line);padding-top:8px"><summary style="cursor:pointer"><b>نقل هذا الحساب ليصبح فرعيًا داخل حساب رئيسي آخر</b></summary><small style="display:block;margin:6px 0">يصبح هذا الحساب فرعيًا داخل الحساب الرئيسي الذي تختاره${n?`، وتتحول حساباته الفرعية (${n}) تلقائيًا إلى مجموعة باسم «${HE(a.name)}» داخله`:''}. الفواتير والمعاملات والقيم الافتتاحية وأكواد الحسابات تبقى كما هي دون أي تغيير.</small><label>الحساب الرئيسي الجديد</label><select id="mv_${a.id}"><option value="">— اختر الحساب الرئيسي —</option>${tg.map(x=>`<option value="${x.id}">${HE(x.code)} — ${HE(x.name)}</option>`).join('')}</select><button class="b s g" style="margin-top:8px" onclick="mvMain('${a.id}')">نقل الحساب</button></details>`}
-async function mvMain(id){try{const a=accById(id),tid=$('#mv_'+id).value;if(!a)return;if(!tid)return msg('اختر الحساب الرئيسي الذي سيُنقل إليه',1);const t=accById(tid);
- if(a.parent_id)return msg('هذا الحساب فرعي بالفعل',1);if(!t||t.parent_id)return msg('الوجهة يجب أن تكون حسابًا رئيسيًا',1);if(t.kind!=a.kind)return msg('لا يمكن نقل حساب '+KIND_AR[a.kind]+' داخل حساب '+KIND_AR[t.kind],1);
+${gs&&GOK&&(gs.length||GRP[a.id])?`<label>المجموعة (بين أخوات هذا الحساب)</label><select id="g_${a.id}"><option value="">بدون مجموعة</option>${gs.map(g=>`<option value="${HE(g)}" ${g==GRP[a.id]?'selected':''}>${HE(g)}</option>`).join('')}</select>`:''}
+<div class="grid"><button class="b s" style="margin-top:8px;width:100%" onclick="save('${a.id}')">حفظ هذا الحساب</button><button class="b s r" style="margin-top:8px;width:100%" onclick="del('${a.id}')">حذف الحساب</button></div>${mvUI(a)}`}
+function mvUI(a){if(nz(a.name)==nz('إيراد الطلاب'))return '';const sub=new Set(accSubtree(a.id).map(x=>x.id)),T2=accTree().filter(x=>!sub.has(x.id)&&x.kind==a.kind&&x.id!=a.parent_id);if(!T2.length&&!a.parent_id)return '';const n=accDesc(a.id).length;
+ return `<details style="margin-top:12px;border-top:1px dashed var(--line);padding-top:8px"><summary style="cursor:pointer"><b>نقل هذا الحساب${n?' مع كل فروعه ('+n+')':''} إلى مكان آخر في الدليل</b></summary><small style="display:block;margin:6px 0">يُنقل الحساب بكل ما تحته من فروع كما هي إلى الأب الذي تختاره (أي حساب رئيسي أو فرعي من نفس النوع، عدا فروعه هو). الفواتير والمعاملات والقيم الافتتاحية وأكواد الحسابات تبقى كما هي دون أي تغيير.</small><label>الحساب الأب الجديد</label><select id="mv_${a.id}"><option value="">— اختر المكان الجديد —</option>${a.parent_id?'<option value="__root">— جعله حسابًا رئيسيًا (بلا أب) —</option>':''}${T2.map(x=>`<option value="${x.id}">${'— '.repeat(accDepth(x.id))}${HE(x.code)} — ${HE(x.name)}</option>`).join('')}</select><button class="b s g" style="margin-top:8px" onclick="mvNode('${a.id}')">نقل الحساب</button></details>`}
+async function mvNode(id){try{await accLoad(true);const a=accById(id),v=$('#mv_'+id).value;if(!a)return;if(!v)return msg('اختر المكان الجديد',1);const root=v=='__root',t=root?null:accById(v);
  if(nz(a.name)==nz('إيراد الطلاب'))return msg('حساب «إيراد الطلاب» مرتبط برفع ملف الطلاب ولا يُنقل',1);
- const subs=ACC.filter(x=>x.parent_id==a.id),g=subs.length?a.name:null;if(subs.length&&!GOK)return msg('نقل حساب له فروع يحتاج تشغيل ملف migration_v12_account_groups.sql أولًا',1);
- const kids=ACC.filter(x=>x.parent_id==t.id),names=new Set(kids.map(x=>nz(x.name))),bad=[a,...subs].filter(x=>names.has(nz(x.name)));
- if(bad.length)return msg('يوجد داخل «'+t.name+'» حسابات بنفس الأسماء: '+bad.map(x=>x.name).join('، ')+' — غيّر الاسم أولًا',1);
- const merge=g&&kids.some(x=>GRP[x.id]&&nz(GRP[x.id])==nz(g));
- if(!confirm('نقل الحساب «'+a.name+'» ليصبح فرعيًا داخل «'+t.name+'»؟'+(subs.length?'\nستتحول حساباته الفرعية ('+subs.length+') إلى مجموعة «'+g+'» داخله'+(merge?' (ستُدمج مع مجموعة بنفس الاسم موجودة)':'')+'.':'')+'\nلن تتأثر أي فاتورة أو معاملة أو قيمة افتتاحية أو كود حساب.'))return;
- if(subs.length){const r=await api('accounts?id=in.('+subs.map(x=>x.id).join(',')+')','PATCH',{parent_id:t.id,grp:g});if(r.length!=subs.length)throw Error('لم يتم نقل كل الحسابات الفرعية — لم يُنقل الحساب الرئيسي، راجع الحسابات')}
- const r2=await api('accounts?id=eq.'+id,'PATCH',g?{parent_id:t.id,grp:g}:{parent_id:t.id});if(!r2.length)throw Error('لم يتم نقل الحساب');
- await audit('نقل حساب رئيسي ليصبح فرعيًا','accounts',id,null,{'الحساب':a.code+' — '+a.name,'نوعه':'رئيسي','الفروع':subs.length},{'الحساب الرئيسي الجديد':t.code+' — '+t.name,'المجموعة':g||'—'});
- OPEN.add(t.id);if(g)OPEN.add('g_'+t.id+'_'+enc(g));await load();msg('تم نقل الحساب'+(subs.length?' وتحويل حساباته الفرعية إلى مجموعة «'+g+'»':'')+' — لم تتأثر أي معاملات')}catch(e){msg(errT(e),1)}}
-function subCard(a,gs){return `<details class="card" style="margin-inline-start:14px;border-inline-start:4px solid var(--gold)" ${OPEN.has(a.id)?'open':''} ontoggle="tg('${a.id}',this.open)"><summary style="cursor:pointer"><span class="bd on">${HE(a.code)}</span> <b>${HE(a.name)}</b> <small>فرعي • ${INV_CNT[a.id]||0} فاتورة • ${money(+a.opening||0)}</small></summary>${form(a,gs)}</details>`}
-function draw(){const T=accTree(),mains=T.filter(a=>!a.parent_id);
- $('#sm').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px"><div class="stat"><small>الحسابات الرئيسية</small><b>${mains.length}</b></div><div class="stat"><small>الحسابات الفرعية</small><b>${T.length-mains.length}</b></div><div class="stat"><small>إجمالي القيم الافتتاحية</small><b>${money(T.reduce((s,a)=>s+(+a.opening||0),0))}</b></div></div>`;
- $('#l').innerHTML=mains.map(m=>{const subs=T.filter(x=>x.parent_id==m.id),tot=(INV_CNT[m.id]||0)+subs.reduce((s,x)=>s+(INV_CNT[x.id]||0),0);
-  const groups=GOK?[...new Set(subs.map(x=>GRP[x.id]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar')):[],loose=subs.filter(x=>!GRP[x.id]||!GOK);
-  const gHtml=groups.map(g=>{const mem=subs.filter(x=>GRP[x.id]==g),k='g_'+m.id+'_'+enc(g),n=mem.reduce((s,x)=>s+(INV_CNT[x.id]||0),0),op=mem.reduce((s,x)=>s+(+x.opening||0),0);
-   return `<details class="card" style="margin-inline-start:14px;border-inline-start:5px solid var(--teal);background:#f7faf9" ${OPEN.has(k)?'open':''} ontoggle="tg('${k}',this.open)"><summary style="cursor:pointer"><span class="bd" style="background:#e8f1f0">مجموعة</span> <b>${HE(g)}</b> <small>${mem.length} فرعي • ${n} فاتورة • ${money(op)}</small></summary>
-<div class="grid"><button class="b s" style="margin-top:8px;width:100%" onclick="renGroup('${m.id}','${enc(g)}')">إعادة تسمية المجموعة</button><button class="b s g" style="margin-top:8px;width:100%" onclick="unGroup('${m.id}','${enc(g)}')">فك المجموعة (تبقى الحسابات)</button></div>
-<div style="margin-top:8px">${mem.map(a=>subCard(a,groups)).join('')}</div></details>`}).join('');
-  const mk=GOK?`<details class="card" style="margin-inline-start:14px;border:1px dashed var(--teal)" ${OPEN.has('mk_'+m.id)?'open':''} ontoggle="tg('mk_${m.id}',this.open)"><summary style="cursor:pointer"><b>+ إنشاء مجموعة جديدة</b></summary><label>اسم المجموعة</label><input id="gn_${m.id}" placeholder="مثال: التأمينات الصحية">
-${loose.length?`<label>اختر الحسابات الفرعية التي تدخل في المجموعة</label><div class="chk">${loose.map(x=>`<label><input type="checkbox" name="gs_${m.id}" value="${x.id}">${HE(x.name)}</label>`).join('')}</div><button class="b s" style="margin-top:10px" onclick="mkGroup('${m.id}')">إنشاء المجموعة</button>`:'<small style="display:block;margin-top:6px">لا توجد حسابات فرعية بدون مجموعة. أضف حسابًا فرعيًا أولًا.</small>'}</details>`:'';
-  return `<details class="card" style="border-inline-start:6px solid var(--teal)" ${OPEN.has(m.id)?'open':''} ontoggle="tg('${m.id}',this.open)"><summary style="cursor:pointer"><span class="bd on">${HE(m.code)}</span> <b>${HE(m.name)}</b> <small>رئيسي • ${KIND_AR[m.kind]} • ${groups.length} مجموعة • ${subs.length} فرعي • ${tot} فاتورة</small></summary>
-${form(m)}
-<h2 style="margin-top:16px">المجموعات والحسابات الفرعية</h2>
-${mk}${gHtml}
-${loose.length?`<small style="display:block;margin:8px 0">${groups.length?'حسابات فرعية بدون مجموعة':'الحسابات الفرعية'} (${loose.length})</small>`+loose.map(a=>subCard(a,groups)).join(''):(subs.length?'':'<small>لا توجد حسابات فرعية لهذا الحساب</small>')}</details>`}).join('')||'<div class="msg">لا توجد حسابات بعد. أضف أول حساب رئيسي من الزر أعلاه.</div>'}
+ if(root){if(!a.parent_id)return msg('هذا الحساب رئيسي بالفعل',1)}else{if(!t)return msg('الوجهة غير موجودة',1);if(accSubtree(id).some(x=>x.id==t.id))return msg('لا يمكن نقل الحساب داخل أحد فروعه',1);if(t.kind!=a.kind)return msg('لا يمكن نقل حساب '+KIND_AR[a.kind]+' داخل حساب '+KIND_AR[t.kind],1)}
+ const np=t?t.id:null;if((a.parent_id||null)==np)return msg('الحساب في هذا المكان بالفعل',1);
+ if(ACC.some(x=>x.id!=id&&(x.parent_id||null)==np&&nz(x.name)==nz(a.name)))return msg('يوجد تحت الوجهة حساب بنفس الاسم «'+a.name+'» — غيّر الاسم أولًا',1);
+ const n=accDesc(id).length,old=accPath(id),neu=(t?accPath(t.id)+' › ':'')+a.name;
+ if(!confirm('نقل الحساب «'+a.name+'»'+(n?' مع كل فروعه ('+n+')':'')+' من:\n'+old+'\nإلى:\n'+neu+'\nلن تتأثر أي فاتورة أو معاملة أو قيمة افتتاحية أو كود حساب.'))return;
+ const r=await api('accounts?id=eq.'+id,'PATCH',GOK?{parent_id:np,grp:null}:{parent_id:np});if(!r.length)throw Error('لم يتم نقل الحساب');
+ await audit('نقل حساب في دليل الحسابات','accounts',id,null,{'الحساب':a.code+' — '+a.name,'المسار السابق':old,'عدد الفروع المنقولة معه':n},{'المسار الجديد':neu});
+ OPEN.add(id);if(t){OPEN.add(t.id);accAnc(t.id).forEach(x=>OPEN.add(x.id))}await load();msg('تم نقل الحساب'+(n?' مع '+n+' من فروعه':'')+' — لم تتأثر أي معاملات')}catch(e){msg(errT(e),1)}}
+function addChildUI(a){const k='af_'+a.id;return `<details class="card" style="margin:8px 0;border:1px dashed var(--gold)" ${OPEN.has(k)?'open':''} ontoggle="tg('${k}',this.open)"><summary style="cursor:pointer"><b>+ إضافة حساب فرعي داخل «${HE(a.name)}»</b></summary>
+<div class="grid"><div><label>الكود</label><input id="cc_${a.id}" value="${HE(accSugCode(a.id))}"></div><div><label>الاسم</label><input id="cn_${a.id}"></div></div>
+<div class="grid"><div><label>القيمة الافتتاحية</label><input id="co_${a.id}" type="number" inputmode="decimal" value="0"></div><div><label>تاريخها</label><input id="cd_${a.id}" type="date"></div></div>
+<button class="b s" style="margin-top:8px" onclick="addChild('${a.id}')">حفظ الحساب الفرعي</button></details>`}
+async function addChild(pid){try{await accLoad(true);const p=accById(pid);if(!p)return;const cd=$('#cc_'+pid).value.trim(),nm=$('#cn_'+pid).value.trim(),op=$('#co_'+pid).value,od=$('#cd_'+pid).value||null;
+ if(!cd||!nm)return msg('أدخل كود الحساب الفرعي واسمه',1);if(op!==''&&!isFinite(+op))return msg('القيمة الافتتاحية غير صالحة',1);
+ if(ACC.some(x=>nz(x.code)==nz(cd)))return msg('كود الحساب مستخدم من قبل',1);if(ACC.some(x=>(x.parent_id||null)==pid&&nz(x.name)==nz(nm)))return msg('يوجد حساب بنفس الاسم تحت «'+p.name+'»',1);
+ const r=(await api('accounts','POST',{code:cd,name:nm,parent_id:pid,kind:p.kind,opening:+op||0,opening_date:od,created_by:U.id}))[0];
+ await audit('إضافة حساب فرعي','accounts',r.id,null,null,{'الكود':cd,'الاسم':nm,'المسار':accPath(pid)+' › '+nm});OPEN.add(pid);OPEN.add('af_'+pid);accAnc(pid).forEach(x=>OPEN.add(x.id));await load();msg('تمت إضافة «'+nm+'» داخل «'+p.name+'»')}catch(e){msg(errT(e),1)}}
+function nodeCard(a,depth,path){if(path.has(a.id)||depth>40)return '';const P=new Set(path);P.add(a.id);
+ const kids=accKids(a.id),dsc=accDesc(a.id),own=INV_CNT[a.id]||0,tot=own+dsc.reduce((s,x)=>s+(INV_CNT[x.id]||0),0),
+  groups=GOK?[...new Set(kids.map(x=>GRP[x.id]).filter(Boolean))].sort(arS):[],loose=kids.filter(x=>!GOK||!GRP[x.id]),col=COL[depth%COL.length],ind=depth&&depth<=5?10:0;
+ const gHtml=groups.map(g=>{const mem=kids.filter(x=>GRP[x.id]==g),k='g_'+a.id+'_'+enc(g),n=mem.reduce((s,x)=>s+(INV_CNT[x.id]||0),0),op=mem.reduce((s,x)=>s+(+x.opening||0),0);
+  return `<details class="card" style="margin-inline-start:6px;border-inline-start:5px solid var(--teal);background:#f7faf9" ${OPEN.has(k)?'open':''} ontoggle="tg('${k}',this.open)"><summary style="cursor:pointer"><span class="bd" style="background:#e8f1f0">مجموعة</span> <b>${HE(g)}</b> <small>${mem.length} فرع • ${n} فاتورة • ${money(op)}</small></summary>
+<div class="grid"><button class="b s" style="margin-top:8px;width:100%" onclick="renGroup('${a.id}','${enc(g)}')">إعادة تسمية المجموعة</button><button class="b s g" style="margin-top:8px;width:100%" onclick="unGroup('${a.id}','${enc(g)}')">فك المجموعة (تبقى الحسابات)</button></div>
+<div style="margin-top:8px">${mem.map(x=>nodeCard(x,depth+1,P)).join('')}</div></details>`}).join('');
+ const mk=GOK&&kids.length?`<details class="card" style="margin:8px 0;border:1px dashed var(--teal)" ${OPEN.has('mk_'+a.id)?'open':''} ontoggle="tg('mk_${a.id}',this.open)"><summary style="cursor:pointer"><b>+ إنشاء مجموعة جديدة بين الفروع</b></summary><label>اسم المجموعة</label><input id="gn_${a.id}" placeholder="مثال: التأمينات الصحية">
+${loose.length?`<label>اختر الفروع التي تدخل في المجموعة</label><div class="chk">${loose.map(x=>`<label><input type="checkbox" name="gs_${a.id}" value="${x.id}">${HE(x.name)}</label>`).join('')}</div><button class="b s" style="margin-top:10px" onclick="mkGroup('${a.id}')">إنشاء المجموعة</button>`:'<small style="display:block;margin-top:6px">كل الفروع داخل مجموعات بالفعل.</small>'}</details>`:'';
+ return `<details class="card" style="margin-inline-start:${ind}px;padding:${depth?'10px 8px':'14px'};border-inline-start:${depth?4:6}px solid ${col}" ${OPEN.has(a.id)?'open':''} ontoggle="tg('${a.id}',this.open)"><summary style="cursor:pointer"><span class="bd ${depth?'':'on'}">${HE(a.code)}</span> <b>${HE(a.name)}</b> <small>${depth?'فرعي':'رئيسي'} • ${KIND_AR[a.kind]} • ${kids.length} فرع مباشر${dsc.length>kids.length?' ('+dsc.length+' بكل المستويات)':''}${groups.length?' • '+groups.length+' مجموعة':''} • ${tot} فاتورة${tot!=own?' ('+own+' عليه مباشرة)':''}</small></summary>
+${form(a)}<h2 style="margin-top:16px;font-size:1rem">الفروع${GOK?' والمجموعات':''}</h2>${addChildUI(a)}${mk}${gHtml}
+${loose.length?(groups.length?`<small style="display:block;margin:8px 0">فروع بدون مجموعة (${loose.length})</small>`:'')+loose.map(x=>nodeCard(x,depth+1,P)).join(''):(kids.length?'':'<small>لا توجد فروع لهذا الحساب بعد</small>')}</details>`}
+function draw(){const T=accTree(),roots=accKids(null),maxD=T.reduce((m,a)=>Math.max(m,accDepth(a.id)),0);
+ $('#sm').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px"><div class="stat"><small>الحسابات الرئيسية</small><b>${roots.length}</b></div><div class="stat"><small>الحسابات الفرعية (كل المستويات)</small><b>${T.length-roots.length}</b></div><div class="stat"><small>أقصى عدد مستويات</small><b>${T.length?maxD+1:0}</b></div><div class="stat"><small>إجمالي القيم الافتتاحية</small><b>${money(T.reduce((s,a)=>s+(+a.opening||0),0))}</b></div></div>`;
+ $('#l').innerHTML=roots.map(r=>nodeCard(r,0,new Set())).join('')||'<div class="msg">لا توجد حسابات بعد. أضف أول حساب رئيسي من الزر أعلاه.</div>'}
+function openAll(){accTree().forEach(a=>OPEN.add(a.id));draw()}function closeAll(){OPEN.clear();draw()}
 async function setGrp(ids,v){const r=await api('accounts?id=in.('+ids.join(',')+')','PATCH',{grp:v});if(!r.length)throw Error('لم يتم الحفظ')}
 const subsOf=mid=>ACC.filter(x=>x.parent_id==mid);
 const dupG=(mid,nm,except)=>subsOf(mid).some(x=>GRP[x.id]&&nz(GRP[x.id])==nz(nm)&&GRP[x.id]!=except);
 async function mkGroup(mid){try{const nm=$('#gn_'+mid).value.trim(),ids=[...document.querySelectorAll('input[name="gs_'+mid+'"]:checked')].map(x=>x.value);
- if(!nm)return msg('اكتب اسم المجموعة',1);if(!ids.length)return msg('اختر حسابًا فرعيًا واحدًا على الأقل',1);if(dupG(mid,nm))return msg('توجد مجموعة بنفس الاسم في هذا الحساب',1);
+ if(!nm)return msg('اكتب اسم المجموعة',1);if(!ids.length)return msg('اختر فرعًا واحدًا على الأقل',1);if(dupG(mid,nm))return msg('توجد مجموعة بنفس الاسم داخل هذا الحساب',1);
  await setGrp(ids,nm);await audit('إنشاء مجموعة حسابات','accounts',mid,null,null,{'المجموعة':nm,'عدد الفرعية':ids.length});OPEN.add(mid);OPEN.add('g_'+mid+'_'+enc(nm));await load();msg('تم إنشاء المجموعة')}catch(e){msg(errT(e),1)}}
 async function renGroup(mid,e){try{const old=decodeURIComponent(e),nm=(prompt('الاسم الجديد للمجموعة',old)||'').trim();if(!nm||nm==old)return;if(dupG(mid,nm,old))return msg('توجد مجموعة بنفس الاسم',1);
  const ids=subsOf(mid).filter(x=>GRP[x.id]==old).map(x=>x.id);await setGrp(ids,nm);await audit('إعادة تسمية مجموعة حسابات','accounts',mid,null,{'المجموعة':old},{'المجموعة':nm});OPEN.delete('g_'+mid+'_'+enc(old));OPEN.add('g_'+mid+'_'+enc(nm));await load();msg('تم تغيير الاسم')}catch(e){msg(errT(e),1)}}
@@ -59,13 +70,13 @@ async function unGroup(mid,e){try{const g=decodeURIComponent(e);if(!confirm('ف�
  const ids=subsOf(mid).filter(x=>GRP[x.id]==g).map(x=>x.id);await setGrp(ids,null);await audit('فك مجموعة حسابات','accounts',mid,null,{'المجموعة':g,'عدد الفرعية':ids.length},null);OPEN.delete('g_'+mid+'_'+enc(g));await load();msg('تم فك المجموعة')}catch(e){msg(errT(e),1)}}
 async function patch(id){const a=accById(id),nm=$('#n_'+id).value.trim(),op=$('#o_'+id).value,od=$('#d_'+id).value||null,ge=$('#g_'+id),gv=ge?ge.value:null;if(!nm)throw Error('اسم الحساب مطلوب');if(op!==''&&!isFinite(+op))throw Error('القيمة الافتتاحية غير صالحة');
  const o=+op||0,og=GRP[id]||'',gch=ge&&gv!=og,changed=nm!=a.name||o!=(+a.opening||0)||(od||null)!=(a.opening_date||null)||gch;if(!changed)return false;
- if(ACC.some(x=>x.id!=id&&(x.parent_id||null)==(a.parent_id||null)&&nz(x.name)==nz(nm)))throw Error('يوجد حساب بنفس الاسم تحت نفس الحساب الرئيسي: '+nm);
+ if(ACC.some(x=>x.id!=id&&(x.parent_id||null)==(a.parent_id||null)&&nz(x.name)==nz(nm)))throw Error('يوجد حساب بنفس الاسم تحت نفس الحساب الأب: '+nm);
  const body={name:nm,opening:o,opening_date:od};if(ge)body.grp=gv||null;
  const r=await api('accounts?id=eq.'+id,'PATCH',body);if(!r.length)throw Error('لم يتم الحفظ');
  await audit('تعديل حساب / قيمة افتتاحية','accounts',id,null,{'الاسم':a.name,'الافتتاحي':a.opening,'التاريخ':a.opening_date,'المجموعة':og},{'الاسم':nm,'الافتتاحي':o,'التاريخ':od,'المجموعة':ge?gv:og});return true}
 async function save(id){try{const ch=await patch(id);await load();msg(ch?'تم حفظ الحساب':'لا توجد تعديلات')}catch(e){msg(errT(e),1)}}
 async function saveAll(){let n=0;try{for(const a of accTree())if(await patch(a.id))n++;await load();msg(n?'تم حفظ '+n+' حساب':'لا توجد تعديلات')}catch(e){msg('توقف الحفظ بعد '+n+' حساب: '+errT(e),1)}}
-async function del(id){const a=accById(id);if(!a)return;if(ACC.some(x=>x.parent_id==id))return msg('لا يمكن حذف حساب له حسابات فرعية',1);
+async function del(id){const a=accById(id);if(!a)return;if(ACC.some(x=>x.parent_id==id))return msg('لا يمكن حذف حساب له حسابات فرعية — احذف فروعه أو انقلها أولًا',1);
  try{const n=(await api('invoices?account_id=eq.'+id+'&select=id&limit=1')).length;if(n)return msg('لا يمكن حذف حساب عليه فواتير',1);if(!confirm('حذف الحساب «'+a.name+'» نهائيًا؟'))return;
   await api('accounts?id=eq.'+id,'DELETE');await audit('حذف حساب','accounts',id,null,{'الكود':a.code,'الاسم':a.name},null);await load();msg('تم حذف الحساب')}catch(e){msg(errT(e),1)}}
 acctField($('#af'),{id:'newacc',addOnly:true,onSaved:()=>load()});load();
