@@ -1,0 +1,255 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>اللوحة التنفيذية</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css?v=40">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+.xd-wrap{flex:1;width:100%;display:flex;flex-direction:column;font-family:'Tajawal',system-ui,sans-serif}
+.xd-bar{background:#fff;border-bottom:1px solid #d9e0de;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.xd-bar .sep{width:1px;align-self:stretch;background:#d9e0de;margin:0 2px}
+.xd-chip{border:1px solid #cfd8d6;background:#fff;border-radius:18px;padding:6px 13px;font:inherit;font-size:.85rem;cursor:pointer;color:#17313b;white-space:nowrap}
+.xd-chip.on{background:#1f5a66;color:#fff;border-color:#1f5a66}.xd-chip.gold{background:#b8862b;color:#fff;border-color:#b8862b}
+.xd-bar input{width:auto;padding:5px 8px;font-size:.85rem;border:1px solid #cfd8d6;border-radius:8px}
+.xd{position:relative;height:80vh;min-height:560px;overflow:hidden;color:#fff;background:radial-gradient(1100px 600px at 85% -15%,#21677a 0,transparent 60%),radial-gradient(900px 520px at -5% 115%,#7a5714 0,transparent 55%),#0e2430}
+body.xd-fs header,body.xd-fs nav,body.xd-fs footer,body.xd-fs .xd-bar{display:none!important}
+body.xd-fs .xd{position:fixed;top:0;right:0;bottom:0;left:0;height:100%;min-height:0;z-index:60}
+.xd-slide{position:absolute;top:0;right:0;bottom:0;left:0;padding:20px 20px 78px;overflow-y:auto;overflow-x:hidden;opacity:0;pointer-events:none;transform:translateX(-46px);transition:opacity .55s ease,transform .55s ease;-webkit-overflow-scrolling:touch}
+.xd-slide.on{opacity:1;pointer-events:auto;transform:none}
+.xd-slide.prv{transform:translateX(46px)}
+.xd-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.xd-h small{color:#a9c4cc;display:block;margin-bottom:2px}.xd-h h1,.xd-h h2{margin:0;font-size:clamp(1.35rem,4.2vw,2.2rem);font-weight:800;line-height:1.25}
+.xd-logo{height:54px;width:54px;object-fit:contain;background:#fff;border-radius:50%;flex:none}
+.xd-c{background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.13);border-radius:18px;padding:14px 16px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);min-width:0}
+.xd-c h3{margin:0 0 10px;font-size:1rem;font-weight:700;color:#e6f1f3}
+.xd-c small,.xd-sm{color:#a9c4cc;font-size:.8rem}
+.xd-g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}.xd-g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}.xd-g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.xd-k small{display:block}.xd-k b{display:block;font-size:clamp(1.5rem,4.6vw,2.7rem);font-weight:800;line-height:1.15;margin:4px 0}.xd-k em{font-style:normal;color:#a9c4cc;font-size:.78rem;display:block;margin-bottom:4px}
+.xd-k.g{border-top:4px solid #2ec27e}.xd-k.g b{color:#5ee5a2}.xd-k.r{border-top:4px solid #ef6b57}.xd-k.r b{color:#ff9a8a}.xd-k.y{border-top:4px solid #e5a823}.xd-k.y b{color:#ffd166}.xd-k.gr b{color:#5ee5a2}.xd-k.rr b{color:#ff9a8a}
+.xd-d{display:inline-block;font-size:.76rem;border-radius:10px;padding:1px 9px;background:rgba(255,255,255,.12)}.xd-d.g{color:#5ee5a2}.xd-d.r{color:#ff9a8a}
+.xd-mini{display:grid;grid-template-columns:1fr 1fr;gap:10px}.xd-mini div{background:rgba(255,255,255,.06);border-radius:12px;padding:8px 10px}.xd-mini small{display:block}.xd-mini b{font-size:1.1rem}
+.xd-br{display:grid;grid-template-columns:minmax(90px,34%) 1fr auto;gap:8px;align-items:center;margin:7px 0}
+.xd-bl{min-width:0}.xd-bl b{display:block;font-size:.88rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.xd-bl small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xd-bt{background:rgba(255,255,255,.1);border-radius:8px;height:14px;overflow:hidden}.xd-bf{height:100%;border-radius:8px;transform-origin:right;transition:transform 1s cubic-bezier(.2,.8,.2,1)}
+.xd-slide:not(.on) .xd-bf{transform:scaleX(0)}.xd-bv{font-size:.82rem;font-weight:700;white-space:nowrap;min-width:78px;text-align:end}
+.xd-tm{position:relative;height:300px;border-radius:12px;overflow:hidden;background:rgba(0,0,0,.18)}
+.xd-tm div{position:absolute;box-sizing:border-box;border:2px solid #0e2430;border-radius:8px;padding:6px 8px;overflow:hidden;font-size:.78rem;line-height:1.35;cursor:pointer;transition:filter .2s}
+.xd-tm div:hover{filter:brightness(1.18)}.xd-tm b{display:block;font-size:.85rem}
+.xd-em{color:#a9c4cc;padding:14px 4px;text-align:center}
+.xd-ins{list-style:none;margin:0;padding:0}.xd-ins li{display:flex;gap:12px;align-items:flex-start;background:rgba(255,255,255,.07);border-radius:14px;padding:12px 14px;margin:9px 0;font-size:1rem;line-height:1.6}.xd-ins i{font-style:normal;font-size:1.4rem;flex:none}
+.xd table{width:100%;border-collapse:collapse;font-size:.82rem}.xd th{background:rgba(255,255,255,.1);padding:7px 8px;text-align:start;font-weight:700;white-space:nowrap}.xd td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}.xd td a{color:#7fd4ff}
+.xd-tw{overflow-x:auto;max-height:340px;overflow-y:auto}
+.xd-tag{display:inline-block;border-radius:10px;padding:0 9px;font-size:.72rem;background:rgba(255,255,255,.14)}.xd-tag.i{background:#1c6b47}.xd-tag.o{background:#8c3a2c}
+.xd-ctl{position:absolute;bottom:0;right:0;left:0;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px;background:linear-gradient(transparent,rgba(8,22,30,.92) 55%);z-index:5}
+.xd-ctl button{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.1);color:#fff;border-radius:50%;width:40px;height:40px;font-size:1.2rem;cursor:pointer;font-family:inherit}
+.xd-dots{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;max-width:70%}.xd-dots i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.3);cursor:pointer;transition:all .3s}.xd-dots i.on{background:#ffd166;width:26px;border-radius:6px}
+.xd-ttl{position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:.72rem;color:#a9c4cc;z-index:4;pointer-events:none}
+.xd-x{display:none;position:absolute;top:10px;left:12px;z-index:7;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.35);color:#fff;border-radius:18px;padding:5px 14px;font:inherit;cursor:pointer}body.xd-fs .xd-x{display:block}
+.xd-load{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;z-index:8;background:#0e2430;font-size:1.1rem}
+.xd select,.xd input[type=text],.xd input:not([type]){background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:9px;font:inherit;width:100%}
+.xd option{color:#17313b}.xd input::placeholder{color:#a9c4cc}
+.xd-ck{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:.9rem}.xd-ck input{width:auto}
+@media(max-width:760px){.xd-g3,.xd-g4{grid-template-columns:1fr 1fr}.xd-g2{grid-template-columns:1fr}.xd-slide{padding:14px 12px 78px}.xd-br{grid-template-columns:minmax(80px,40%) 1fr auto}.xd{height:76vh}}
+@media(max-width:480px){.xd-g3{grid-template-columns:1fr}.xd-dots{max-width:58%}.xd-logo{height:42px;width:42px}}
+@media print{header,nav,footer,.xd-bar,.xd-ctl,.xd-x,.xd-ttl{display:none!important}body{background:#fff}.xd-wrap{display:block}.xd{position:static;height:auto;min-height:0;overflow:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#0e2430!important}.xd-slide{position:relative;opacity:1;transform:none;pointer-events:auto;break-after:page;page-break-after:always;min-height:96vh;padding-bottom:16px;overflow:visible}.xd-slide .xd-bf{transform:none!important}.xd-tw{max-height:none;overflow:visible}@page{size:A4 landscape;margin:5mm}}
+</style></head><body>
+<div class="xd-wrap"><div id="msg" class="hide"></div>
+<div class="xd-bar" id="bar"><div id="pre" style="display:flex;gap:6px;flex-wrap:wrap"></div><input type="month" id="pm" class="hide"><span id="pr" class="hide"><input type="date" id="r1"> ← <input type="date" id="r2"> <button class="xd-chip gold" id="go">عرض</button></span><span class="sep"></span><div id="dst" style="display:flex;gap:6px"></div><span class="sep"></span>
+<button class="xd-chip gold" id="fsb">▶ عرض تقديمي</button><button class="xd-chip" id="aub">⏵ تشغيل تلقائي</button><button class="xd-chip" id="xlb">Excel</button><button class="xd-chip" id="prb">طباعة / PDF</button></div>
+<div class="xd" id="xd"><div class="xd-load" id="ld">جارٍ تحميل البيانات…</div><button class="xd-x" id="fsx">× خروج</button><div class="xd-ttl" id="ttl"></div><div id="sl"></div>
+<div class="xd-ctl"><button id="nx" title="التالي">›</button><div class="xd-dots" id="dots"></div><button id="pv" title="السابق">‹</button></div></div></div>
+<script src="js/app.js?v=42"></script><script>
+const U=guard(['chairman','manager','admin']);
+const HE=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const ar=(x,d=0)=>Number(x||0).toLocaleString('ar-EG',{maximumFractionDigits:d});
+const compact=n=>{const a=Math.abs(n),s=n<0?'−':'';return s+(a>=1e9?ar(a/1e9,2)+' مليار':a>=1e6?ar(a/1e6,2)+' مليون':a>=1e4?ar(a/1e3,1)+' ألف':ar(a,0))};
+const pct=(x,d=1)=>x==null||!isFinite(x)?'—':ar(x*100,d)+'%';
+const xIso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const xU=s=>Date.UTC(+s.slice(0,4),+s.slice(5,7)-1,+s.slice(8,10)),xAdd=(s,n)=>new Date(xU(s)+n*864e5).toISOString().slice(0,10);
+const xMonths=(a,b)=>{const o=[];let y=+a.slice(0,4),m=+a.slice(5,7);const ey=+b.slice(0,4),em=+b.slice(5,7);while(y<ey||(y==ey&&m<=em)){o.push(y+'-'+String(m).padStart(2,'0'));m++;if(m>12){m=1;y++}}return o};
+const xML=k=>new Date(k+'-01T00:00:00Z').toLocaleDateString('ar-EG',{month:'long',year:'numeric',timeZone:'UTC'});
+const xMS=k=>new Date(k+'-01T00:00:00Z').toLocaleDateString('ar-EG',{month:'short',timeZone:'UTC'})+(k.slice(5)=='01'?' '+ar(k.slice(0,4)).replace(/٬/g,''):'');
+const PAL=['#2ec27e','#4aa8d8','#e5a823','#9b7bd6','#ef6b57','#35c2b5','#d98ab9','#8fb04a','#c97c3a','#6f8cff'];
+const S={p:'year',dest:'',cur:0,auto:null,M:null,rows:[],CM:[],a:'',b:'',plabel:'',dlabel:'الكل',acct:''};
+const WHO=/^المحص\S{1,3}ل\s*:\s*(.*)$/;
+// ================= محرك الحساب =================
+function normRow(x){const v=x.invoices||{},s=v.suppliers||{},inc=v.type=='income';let who='';
+ String(x.note||'').split(' • ').map(z=>z.trim()).filter(Boolean).forEach((z,i)=>{const m=i==0&&z.match(WHO);if(m)who=m[1]});
+ const pk=s.kind=='student'?'student':/موظف/.test(s.field||'')?'employee':'other',fee=+x.fee||0;
+ return{inc,day:String(x.created_at).slice(0,10),mon:String(x.created_at).slice(0,7),amount:+x.amount,fee,total:rnd(+x.amount+fee),dest:v.dest||'accounts',acc:v.account_id||null,sid:v.supplier_id||null,cid:v.contract_id||null,iid:v.id,code:v.code||'',desc:v.description||'',img:v.image_url||'',iamt:+v.amount||0,type:v.type,sname:s.name||'—',scode:s.code||'',field:s.field||'',level:s.level||'',pk,ctitle:(v.contracts&&v.contracts.title)||'',who:who||(x.pc&&x.pc.full_name)||'—'}}
+function normCM(i){const paid=(i.payments||[]).filter(p=>p.status=='approved').reduce((s,p)=>s+(+p.amount||0),0),s=i.suppliers||{};
+ return{type:i.type,amount:+i.amount,paid,rem:rnd(+i.amount-paid),acc:i.account_id||null,sid:i.supplier_id||null,cid:i.contract_id||null,sname:s.name||'—',scode:s.code||'',pk:s.kind=='student'?'student':/موظف/.test(s.field||'')?'employee':'other',ctitle:(i.contracts&&i.contracts.title)||'',apv:i.apv}}
+const sumBy=(l,f)=>rnd(l.reduce((s,r)=>s+f(r),0));
+function groupBy(l,kf,init,add){const m=new Map();l.forEach(r=>{const k=kf(r);if(k==null)return;let o=m.get(k);if(!o){o=init(r,k);m.set(k,o)}add(o,r)});return[...m.values()]}
+function accRollup(rows,ACCS){const own={};rows.forEach(r=>{const k=r.acc||'∅',o=own[k]=own[k]||{rev:0,exp:0,n:0};r.inc?o.rev+=r.total:o.exp+=r.total;o.n++});
+ const kids={};ACCS.forEach(a=>(kids[a.parent_id||'root']=kids[a.parent_id||'root']||[]).push(a));const byId={};ACCS.forEach(a=>byId[a.id]=a),memo={};
+ function roll(id,seen){if(memo[id])return memo[id];const o=own[id]||{rev:0,exp:0,n:0},t={rev:o.rev,exp:o.exp,n:o.n,ownRev:o.rev,ownExp:o.exp,ownN:o.n,a:byId[id],kids:[]};seen=new Set(seen||[]);seen.add(id);
+  (kids[id]||[]).forEach(c=>{if(seen.has(c.id))return;const r=roll(c.id,seen);t.rev+=r.rev;t.exp+=r.exp;t.n+=r.n;t.kids.push(r)});t.rev=rnd(t.rev);t.exp=rnd(t.exp);memo[id]=t;return t}
+ const roots=(kids.root||[]).map(a=>roll(a.id)).filter(r=>r.n>0).sort((x,y)=>(y.rev+y.exp)-(x.rev+x.exp));
+ const flat=ACCS.map(a=>{const o=own[a.id]||{rev:0,exp:0,n:0};return{a,rev:rnd(o.rev),exp:rnd(o.exp),n:o.n}}).filter(x=>x.n>0);
+ const orphan=ACCS.length&&rows.some(r=>r.acc&&!byId[r.acc])?null:null;
+ return{roots,flat,none:own['∅']?{rev:rnd(own['∅'].rev),exp:rnd(own['∅'].exp),n:own['∅'].n}:null,roll}}
+function buildModel(rows,prev,CMr,ACCS,range){
+ const R=rows.filter(r=>r.inc),X=rows.filter(r=>!r.inc),M={rows,range};
+ M.rev=sumBy(R,r=>r.total);M.exp=sumBy(X,r=>r.total);M.net=rnd(M.rev-M.exp);M.n=rows.length;M.fees=sumBy(rows,r=>r.fee);M.margin=M.rev>0?M.net/M.rev:null;M.avg=M.n?rnd((M.rev+M.exp)/M.n):0;
+ M.prev=prev?{rev:prev.rev,exp:prev.exp,net:rnd(prev.rev-prev.exp)}:null;
+ // السلسلة الزمنية
+ const days=range.a&&range.b?Math.round((xU(range.b)-xU(range.a))/864e5)+1:null,bucket=days!=null&&days<=62?'day':'month';M.bucket=bucket;
+ const kf=r=>bucket=='day'?r.day:r.mon,g=new Map();rows.forEach(r=>{const k=kf(r),o=g.get(k)||{k,rev:0,exp:0,n:0};r.inc?o.rev+=r.total:o.exp+=r.total;o.n++;g.set(k,o)});
+ let keys=[];if(rows.length||(range.a&&range.b)){let a=range.a,b=range.b;if(!a||!b){const ds=rows.map(r=>r.day).sort();a=a||ds[0];b=b||ds[ds.length-1]}
+  if(a&&b){if(bucket=='day'){for(let d=a;d<=b;d=xAdd(d,1))keys.push(d)}else keys=xMonths(a,b)}}
+ let cum=0;M.series=keys.map(k=>{const o=g.get(k)||{rev:0,exp:0,n:0},net=rnd(o.rev-o.exp);cum=rnd(cum+net);return{k,rev:rnd(o.rev),exp:rnd(o.exp),n:o.n,net,cum}});
+ M.dest={treasury:{rev:sumBy(R.filter(r=>r.dest=='treasury'),r=>r.total),exp:sumBy(X.filter(r=>r.dest=='treasury'),r=>r.total)},accounts:{rev:sumBy(R.filter(r=>r.dest!='treasury'),r=>r.total),exp:sumBy(X.filter(r=>r.dest!='treasury'),r=>r.total)}};
+ M.acc=accRollup(rows,ACCS);
+ M.ctr=groupBy(rows,r=>r.cid,r=>({cid:r.cid,title:r.ctitle||'—',sname:r.sname,rev:0,exp:0,n:0}),(o,r)=>{r.inc?o.rev=rnd(o.rev+r.total):o.exp=rnd(o.exp+r.total);o.n++});
+ M.ppl=groupBy(rows,r=>r.sid,r=>({sid:r.sid,name:r.sname,code:r.scode,pk:r.pk,field:r.field,level:r.level,rev:0,exp:0,n:0}),(o,r)=>{r.inc?o.rev=rnd(o.rev+r.total):o.exp=rnd(o.exp+r.total);o.n++});
+ const top=(l,f,n=10)=>l.filter(x=>f(x)>0).sort((x,y)=>f(y)-f(x)).slice(0,n);
+ M.topPayees=top(M.ppl.filter(p=>p.pk!='student'),p=>p.exp);M.topEmp=top(M.ppl.filter(p=>p.pk=='employee'),p=>p.exp);M.topPayers=top(M.ppl.filter(p=>p.pk!='student'),p=>p.rev);M.topStu=top(M.ppl.filter(p=>p.pk=='student'),p=>p.rev);
+ M.top5share=M.exp>0?sumBy(M.topPayees.slice(0,5),p=>p.exp)/M.exp:null;
+ const stu=rows.filter(r=>r.pk=='student'&&r.inc);M.stuRev=sumBy(stu,r=>r.total);M.stuN=new Set(stu.map(r=>r.sid)).size;
+ M.colleges=groupBy(stu,r=>r.field||'غير محدد',(r,k)=>({k,rev:0,ids:new Set(),n:0}),(o,r)=>{o.rev=rnd(o.rev+r.total);o.ids.add(r.sid);o.n++}).map(o=>({k:o.k,rev:o.rev,cnt:o.ids.size,n:o.n})).sort((x,y)=>y.rev-x.rev);
+ M.levels=groupBy(stu,r=>r.level||'غير محدد',(r,k)=>({k,rev:0,ids:new Set(),n:0}),(o,r)=>{o.rev=rnd(o.rev+r.total);o.ids.add(r.sid);o.n++}).map(o=>({k:o.k,rev:o.rev,cnt:o.ids.size,n:o.n})).sort((x,y)=>y.rev-x.rev);
+ M.team=groupBy(rows,r=>r.who,(r,k)=>({k,col:0,paid:0,n:0}),(o,r)=>{r.inc?o.col=rnd(o.col+r.total):o.paid=rnd(o.paid+r.total);o.n++}).sort((x,y)=>(y.col+y.paid)-(x.col+x.paid));
+ M.topTx=rows.slice().sort((x,y)=>y.total-x.total).slice(0,10);
+ const nd=M.series.filter(s=>s.n>0);M.bestRev=nd.slice().sort((x,y)=>y.rev-x.rev)[0]||null;M.bestExp=nd.slice().sort((x,y)=>y.exp-x.exp)[0]||null;M.bestNet=nd.slice().sort((x,y)=>y.net-x.net)[0]||null;M.worstNet=nd.slice().sort((x,y)=>x.net-y.net)[0]||null;
+ // المستحقات (حتى اليوم)
+ const C=CMr.map(x=>x).filter(x=>x.apv!='rejected'),rc=C.filter(x=>x.type=='income'&&x.rem>0.009),py=C.filter(x=>x.type!='income'&&x.rem>0.009);M.CM=C;
+ M.recv=sumBy(rc,x=>x.rem);M.pay=sumBy(py,x=>x.rem);M.recvN=rc.length;M.payN=py.length;
+ const byP=(l)=>groupBy(l,x=>x.sid,x=>({sid:x.sid,name:x.sname,code:x.scode,v:0,n:0}),(o,x)=>{o.v=rnd(o.v+x.rem);o.n++}).sort((a,b)=>b.v-a.v).slice(0,8),byC=(l)=>groupBy(l,x=>x.cid,x=>({cid:x.cid,title:x.ctitle||'—',sname:x.sname,v:0,n:0}),(o,x)=>{o.v=rnd(o.v+x.rem);o.n++}).sort((a,b)=>b.v-a.v).slice(0,8);
+ M.debtors=byP(rc);M.creditors=byP(py);M.recvC=byC(rc);M.payC=byC(py);
+ // تقدير الأرباح
+ M.after=rnd(M.net+M.recv-M.pay);const mm=M.bucket=='month'?M.series.filter(s=>s.n>0||true):[];
+ if(M.bucket=='month'&&M.series.length>=2){M.avgNet=rnd(sumBy(M.series,s=>s.net)/M.series.length);M.proj3=rnd(M.avgNet*3);M.projY=rnd(M.avgNet*12)}
+ else if(range.a&&range.b){const d=Math.max(1,Math.round((xU(range.b)-xU(range.a))/864e5)+1);M.avgNet=rnd(M.net/d*30);M.proj3=rnd(M.avgNet*3);M.projY=rnd(M.avgNet*12)}else M.avgNet=null;
+ // ملاحظات آلية
+ const I=[];if(M.prev&&M.prev.rev>0){const c=(M.rev-M.prev.rev)/M.prev.rev;I.push(['📈',`الإيرادات ${c>=0?'ارتفعت':'انخفضت'} ${ar(Math.abs(c)*100,1)}% عن الفترة السابقة المماثلة (${money(M.prev.rev)} ← ${money(M.rev)}).`])}
+ if(M.prev&&M.prev.exp>0){const c=(M.exp-M.prev.exp)/M.prev.exp;I.push([c>0?'⚠️':'✅',`المصروفات ${c>=0?'ارتفعت':'انخفضت'} ${ar(Math.abs(c)*100,1)}% عن الفترة السابقة (${money(M.prev.exp)} ← ${money(M.exp)}).`])}
+ I.push([M.net>=0?'💰':'🔻',M.net>=0?`النتيجة فائض بقيمة ${money(M.net)}${M.margin!=null?' بهامش '+pct(M.margin):''}.`:`النتيجة عجز بقيمة ${money(-M.net)} — المصروفات تتجاوز الإيرادات في هذه الفترة.`]);
+ const te=M.acc.roots.filter(r=>r.exp>0).sort((x,y)=>y.exp-x.exp)[0];if(te&&M.exp>0)I.push(['🌳',`أعلى حساب رئيسي إنفاقًا: «${te.a.name}» بقيمة ${money(te.exp)} (${pct(te.exp/M.exp)} من المصروفات).`]);
+ const tr=M.acc.roots.filter(r=>r.rev>0).sort((x,y)=>y.rev-x.rev)[0];if(tr&&M.rev>0)I.push(['🏦',`أعلى حساب رئيسي إيرادًا: «${tr.a.name}» بقيمة ${money(tr.rev)} (${pct(tr.rev/M.rev)} من الإيرادات).`]);
+ if(M.topPayees[0]&&M.exp>0&&M.topPayees[0].exp/M.exp>=.08)I.push(['👤',`أكثر شخص مدفوعًا له: «${M.topPayees[0].name}» بقيمة ${money(M.topPayees[0].exp)} (${pct(M.topPayees[0].exp/M.exp)} من المصروفات).`]);
+ if(M.top5share!=null&&M.top5share>=.5)I.push(['🎯',`تركّز الإنفاق مرتفع: أعلى 5 مستفيدين يستحوذون على ${pct(M.top5share)} من المصروفات.`]);
+ if(M.bucket=='month'&&M.bestNet&&M.worstNet&&M.series.length>1)I.push(['📅',`أفضل فترة صافيًا: ${xML(M.bestNet.k)} (${money(M.bestNet.net)})، وأضعفها: ${xML(M.worstNet.k)} (${money(M.worstNet.net)}).`]);
+ if(M.recv>0||M.pay>0)I.push(['⏳',`المستحق تحصيله ${money(M.recv)} مقابل مستحق دفعه ${money(M.pay)} — الربح المتوقع بعد التسوية ${money(M.after)}.`]);
+ if(M.fees>0)I.push(['⏱️',`رسوم تأخير محصّلة في الفترة: ${money(M.fees)}.`]);
+ M.insights=I;return M}
+function treemap(items,W,H){const out=[];(function lay(l,x,y,w,h,vert){if(!l.length)return;if(l.length==1){out.push(Object.assign({},l[0],{x,y,w,h}));return}
+ const tot=l.reduce((s,i)=>s+i.v,0);let k=1,acc=l[0].v;while(k<l.length-1&&acc<tot/2){acc+=l[k].v;k++}const A=l.slice(0,k),B=l.slice(k),f=A.reduce((s,i)=>s+i.v,0)/tot;
+ if(vert){lay(A,x,y,w*f,h,false);lay(B,x+w*f,y,w*(1-f),h,false)}else{lay(A,x,y,w,h*f,true);lay(B,x,y+h*f,w,h*(1-f),true)}})(items.filter(i=>i.v>0),0,0,W,H,W>=H);return out}
+// ================= الرسوم =================
+const barsH=(l,o={})=>{const mx=Math.max(1,...l.map(x=>x.v));return l.map((x,i)=>`<div class="xd-br"${o.click?` onclick="${o.click(x)}" style="cursor:pointer"`:''}><div class="xd-bl"><b>${HE(x.label)}</b>${x.sub?`<small>${HE(x.sub)}</small>`:''}</div><div class="xd-bt"><div class="xd-bf" style="width:${Math.max(2,x.v/mx*100)}%;background:${x.c||o.c||PAL[i%PAL.length]};transition-delay:${i*70}ms"></div></div><div class="xd-bv">${compact(x.v)}</div></div>`).join('')||'<div class="xd-em">لا توجد بيانات في هذه الفترة</div>'};
+function donut(parts,ctr,sub){const T=parts.reduce((s,p)=>s+p.v,0);if(!T)return'<div class="xd-em">لا توجد بيانات</div>';const R=70,C=2*Math.PI*R;let off=0;
+ const arcs=parts.filter(p=>p.v>0).map(p=>{const l=p.v/T*C,s=`<circle cx="100" cy="100" r="${R}" fill="none" stroke="${p.c}" stroke-width="26" stroke-dasharray="${l} ${C-l}" stroke-dashoffset="${-off}" transform="rotate(-90 100 100)"><title>${HE(p.label)}: ${money(p.v)}</title></circle>`;off+=l;return s}).join('');
+ return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center"><svg viewBox="0 0 200 200" width="190" height="190"><circle cx="100" cy="100" r="${R}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="26"/>${arcs}<text x="100" y="98" text-anchor="middle" fill="#fff" font-size="21" font-weight="800">${ctr}</text><text x="100" y="118" text-anchor="middle" fill="#a9c4cc" font-size="10.5">${sub||''}</text></svg><div>${parts.map(p=>`<div style="margin:6px 0"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${p.c};margin-inline-end:7px"></span>${HE(p.label)}: <b>${compact(p.v)}</b> <small>(${pct(p.v/T,0)})</small></div>`).join('')}</div></div>`}
+function colChart(Sr,bucket){if(!Sr.length)return'<div class="xd-em">لا توجد بيانات في هذه الفترة</div>';const W=760,H=270,pl=10,pr=10,pt=16,pb=36,n=Sr.length,bw=(W-pl-pr)/n,mx=Math.max(1,...Sr.map(s=>Math.max(s.rev,s.exp))),ph=H-pt-pb,ord=Sr.slice().reverse();
+ const cMin=Math.min(0,...Sr.map(s=>s.cum)),cMax=Math.max(1,...Sr.map(s=>s.cum)),cy=v=>pt+ph-((v-cMin)/(cMax-cMin||1))*ph,step=Math.ceil(n/(bucket=='day'?12:14));
+ let g='',pts=[];ord.forEach((s,i)=>{const x=pl+i*bw,hr=s.rev/mx*ph,he=s.exp/mx*ph,lab=bucket=='day'?s.k.slice(8)+'/'+s.k.slice(5,7):xMS(s.k);
+  g+=`<rect x="${x+bw*.1}" y="${pt+ph-hr}" width="${bw*.38}" height="${hr}" rx="3" fill="#2ec27e"><title>${s.k} — إيراد ${money(s.rev)}</title></rect><rect x="${x+bw*.52}" y="${pt+ph-he}" width="${bw*.38}" height="${he}" rx="3" fill="#ef6b57"><title>${s.k} — مصروف ${money(s.exp)}</title></rect>`;
+  if(i%step==0)g+=`<text x="${x+bw/2}" y="${H-12}" text-anchor="middle" fill="#a9c4cc" font-size="11">${lab}</text>`;pts.push(`${x+bw/2},${cy(s.cum)}`)});
+ return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img"><line x1="${pl}" x2="${W-pr}" y1="${pt+ph}" y2="${pt+ph}" stroke="rgba(255,255,255,.25)"/>${g}<polyline points="${pts.join(' ')}" fill="none" stroke="#ffd166" stroke-width="2.6" stroke-linejoin="round"/>${ord.map((s,i)=>`<circle cx="${pl+i*bw+bw/2}" cy="${cy(s.cum)}" r="3.2" fill="#ffd166"><title>${s.k} — الصافي التراكمي ${money(s.cum)}</title></circle>`).join('')}</svg><div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:6px" class="xd-sm"><span><i style="color:#2ec27e">■</i> إيرادات</span><span><i style="color:#ef6b57">■</i> مصروفات</span><span><i style="color:#ffd166">●</i> الصافي التراكمي</span></div>`}
+function tmHtml(items,key){const T=treemap(items,100,100),tot=items.reduce((s,i)=>s+i.v,0);if(!T.length)return'<div class="xd-em">لا توجد بيانات</div>';
+ return `<div class="xd-tm">${T.map((t,i)=>`<div style="left:${t.x}%;top:${t.y}%;width:${t.w}%;height:${t.h}%;background:${PAL[i%PAL.length]}33;border-color:#0e2430;border-inline-start:4px solid ${PAL[i%PAL.length]}" onclick="${t.click}" title="${HE(t.label)} — ${money(t.v)}"><b>${HE(t.label)}</b>${t.w*t.h>260?compact(t.v)+' • '+pct(t.v/tot,0):''}</div>`).join('')}</div>`}
+const xc=(t,b)=>`<div class="xd-c"><h3>${t}</h3>${b}</div>`;
+const dl=(cur,prev,good)=>{if(prev==null||!isFinite(prev)||(prev==0&&cur==0))return'';if(prev==0)return'<span class="xd-d">جديد</span>';const ch=(cur-prev)/Math.abs(prev),up=ch>=0,ok=good=='up'?up:!up;return `<span class="xd-d ${ok?'g':'r'}">${up?'▲':'▼'} ${ar(Math.abs(ch)*100,1)}% عن السابقة</span>`};
+// ================= الشرائح =================
+const TITLES=['الصورة العامة','أبرز الملاحظات','الاتجاه الزمني','تقدير الأرباح','شجرة الحسابات','العقود','الأشخاص','الطلاب ومصادر الدخل','الفريق وأبرز الحركات','المستحقات','حساب محدد'];
+const head=(t,s)=>`<div class="xd-h"><div><small>${HE(s||S.plabel+' • '+S.dlabel)}</small><h2>${t}</h2></div><img src="assets/logo.png" class="xd-logo" alt=""></div>`;
+const sl=(h)=>`<section class="xd-slide">${h}</section>`;
+function sHero(M){const nr=M.net>=0?'gr':'rr';return sl(`<div class="xd-h"><div><small>${HE(S.plabel)} • ${HE(S.dlabel)}</small><h1>الصورة المالية العامة</h1></div><img src="assets/logo.png" class="xd-logo" alt=""></div>
+<div class="xd-g3"><div class="xd-c xd-k g"><small>إجمالي الإيرادات</small><b class="xd-n" data-v="${M.rev}">${compact(M.rev)}</b><em>${money(M.rev)}</em>${dl(M.rev,M.prev&&M.prev.rev,'up')}</div>
+<div class="xd-c xd-k r"><small>إجمالي المصروفات</small><b class="xd-n" data-v="${M.exp}">${compact(M.exp)}</b><em>${money(M.exp)}</em>${dl(M.exp,M.prev&&M.prev.exp,'down')}</div>
+<div class="xd-c xd-k y ${nr}"><small>صافي النتيجة (${M.net>=0?'فائض':'عجز'})</small><b class="xd-n" data-v="${M.net}">${compact(M.net)}</b><em>${money(M.net)}</em>${dl(M.net,M.prev&&M.prev.net,'up')}</div></div>
+<div class="xd-g2">${xc('توزيع الإيراد والمصروف',donut([{label:'الإيرادات',v:M.rev,c:'#2ec27e'},{label:'المصروفات',v:M.exp,c:'#ef6b57'}],M.margin==null?'—':pct(M.margin,0),'هامش الربح'))}
+${xc('مؤشرات سريعة',`<div class="xd-mini"><div><small>عدد الحركات المنفَّذة</small><b>${ar(M.n)}</b></div><div><small>متوسط الحركة</small><b>${compact(M.avg)}</b></div><div><small>رسوم تأخير محصّلة</small><b>${compact(M.fees)}</b></div><div><small>هامش الربح</small><b>${pct(M.margin)}</b></div><div><small>عدد العقود المتحركة</small><b>${ar(M.ctr.length)}</b></div><div><small>عدد الأشخاص</small><b>${ar(M.ppl.length)}</b></div></div>`)}</div>`)}
+const sIns=M=>sl(head('أبرز ما يستحق الانتباه')+`<ul class="xd-ins">${M.insights.map(([i,t])=>`<li><i>${i}</i><span>${t}</span></li>`).join('')||'<li><span>لا توجد حركات منفَّذة في هذه الفترة.</span></li>'}</ul><small class="xd-sm">تُولَّد هذه الملاحظات تلقائيًا من أرقام الفترة المختارة.</small>`);
+const sTrend=M=>sl(head('الاتجاه الزمني للإيرادات والمصروفات',M.bucket=='day'?'تجميع يومي':'تجميع شهري')+xc('الإيرادات مقابل المصروفات مع الصافي التراكمي',colChart(M.series,M.bucket))+
+ `<div class="xd-g3" style="margin-top:12px"><div class="xd-c xd-k g"><small>أعلى فترة إيرادًا</small><b style="font-size:1.4rem">${M.bestRev?compact(M.bestRev.rev):'—'}</b><em>${M.bestRev?(M.bucket=='day'?fdu(M.bestRev.k):xML(M.bestRev.k)):''}</em></div><div class="xd-c xd-k r"><small>أعلى فترة مصروفًا</small><b style="font-size:1.4rem">${M.bestExp?compact(M.bestExp.exp):'—'}</b><em>${M.bestExp?(M.bucket=='day'?fdu(M.bestExp.k):xML(M.bestExp.k)):''}</em></div><div class="xd-c xd-k y"><small>أفضل فترة صافيًا</small><b style="font-size:1.4rem">${M.bestNet?compact(M.bestNet.net):'—'}</b><em>${M.bestNet?(M.bucket=='day'?fdu(M.bestNet.k):xML(M.bestNet.k)):''}</em></div></div>`);
+function sProfit(M){const st=[{label:'الإيرادات المنفَّذة',v:M.rev,c:'#2ec27e'},{label:'المصروفات المنفَّذة',v:M.exp,c:'#ef6b57'},{label:'الصافي المحقَّق',v:Math.abs(M.net),c:M.net>=0?'#ffd166':'#ff7b6b',sub:M.net>=0?'فائض':'عجز'},{label:'مستحق تحصيله',v:M.recv,c:'#4aa8d8',sub:M.recvN+' فاتورة'},{label:'مستحق دفعه',v:M.pay,c:'#c97c3a',sub:M.payN+' فاتورة'},{label:'الربح المتوقع بعد التسوية',v:Math.abs(M.after),c:M.after>=0?'#5ee5a2':'#ff7b6b',sub:M.after>=0?'فائض متوقع':'عجز متوقع'}];
+ return sl(head('تقدير الأرباح')+`<div class="xd-g3"><div class="xd-c xd-k y ${M.net>=0?'gr':'rr'}"><small>الربح المحقَّق في الفترة</small><b class="xd-n" data-v="${M.net}">${compact(M.net)}</b><em>${money(M.net)} • هامش ${pct(M.margin)}</em></div><div class="xd-c xd-k ${M.after>=0?'g':'r'}"><small>الربح المتوقع بعد التحصيل والسداد</small><b class="xd-n" data-v="${M.after}">${compact(M.after)}</b><em>${money(M.after)}</em></div><div class="xd-c xd-k"><small>تقدير بنفس المعدل الشهري</small><b>${M.projY==null?'—':compact(M.projY)}</b><em>${M.avgNet==null?'يحتاج فترة محددة':'سنويًا • ('+compact(M.avgNet)+' شهريًا • '+compact(M.proj3)+' لـ 3 أشهر)'}</em></div></div>`+
+ xc('من المنفَّذ إلى المتوقع',barsH(st.map(x=>({label:x.label,sub:x.sub,v:x.v,c:x.c}))))+`<small class="xd-sm" style="display:block;margin-top:8px">الربح المحقَّق = الإيرادات المنفَّذة − المصروفات المنفَّذة. المستحقات تُحسب حتى اليوم بصرف النظر عن الفترة (إيراد مستحق التحصيل ومصروف مستحق الدفع غير المرفوضين). التقدير السنوي افتراضي بنفس المعدل الشهري.</small>`)}
+function sAccounts(M){const A=M.acc,ex=A.roots.filter(r=>r.exp>0).sort((x,y)=>y.exp-x.exp),rv=A.roots.filter(r=>r.rev>0).sort((x,y)=>y.rev-x.rev),mk=(r,k)=>({label:r.a.name,v:r[k],click:`pickAcct('${r.a.id}')`}),
+ topE=A.flat.filter(x=>x.exp>0).sort((x,y)=>y.exp-x.exp).slice(0,10),topR=A.flat.filter(x=>x.rev>0).sort((x,y)=>y.rev-x.rev).slice(0,8),lab=a=>accPath(a.id)||a.name;
+ return sl(head('شجرة الحسابات')+`<div class="xd-g2">${xc('المصروفات حسب الحساب الرئيسي (بكل فروعه)',tmHtml(ex.map(r=>mk(r,'exp'))))}${xc('الإيرادات حسب الحساب الرئيسي (بكل فروعه)',tmHtml(rv.map(r=>mk(r,'rev'))))}</div>
+ <div class="xd-g2">${xc('أعلى 10 حسابات عليها مدفوعات',barsH(topE.map(x=>({label:x.a.name,sub:lab(x.a),v:x.exp})),{c:'#ef6b57',click:x=>`pickAcct('${(topE.find(t=>t.a.name==x.label&&lab(t.a)==x.sub)||{a:{id:''}}).a.id}')`}))}${xc('أعلى الحسابات إيرادًا',barsH(topR.map(x=>({label:x.a.name,sub:lab(x.a),v:x.rev})),{c:'#2ec27e',click:x=>`pickAcct('${(topR.find(t=>t.a.name==x.label&&lab(t.a)==x.sub)||{a:{id:''}}).a.id}')`}))}</div>
+ ${A.none?`<small class="xd-sm">حركات بلا حساب: ${A.none.n} (إيراد ${money(A.none.rev)} • مصروف ${money(A.none.exp)})</small>`:''}<small class="xd-sm" style="display:block">اضغط على أي حساب لفتح تفاصيله وفواتيره في الشريحة الأخيرة.</small>`)}
+function sContracts(M){const C=M.ctr,e=C.filter(c=>c.exp>0).sort((x,y)=>y.exp-x.exp).slice(0,10),r=C.filter(c=>c.rev>0).sort((x,y)=>y.rev-x.rev).slice(0,10);
+ return sl(head('العقود')+`<div class="xd-g2">${xc('أعلى العقود دفعًا',barsH(e.map(c=>({label:c.title,sub:c.sname,v:c.exp})),{c:'#ef6b57'}))}${xc('أعلى العقود إيرادًا',barsH(r.map(c=>({label:c.title,sub:c.sname,v:c.rev})),{c:'#2ec27e'}))}</div>
+ <div class="xd-g3"><div class="xd-c xd-k"><small>عقود عليها حركة</small><b>${ar(C.length)}</b></div><div class="xd-c xd-k r"><small>إجمالي مدفوعات أعلى 10 عقود</small><b style="font-size:1.5rem">${compact(sumBy(e,c=>c.exp))}</b><em>${M.exp>0?pct(sumBy(e,c=>c.exp)/M.exp)+' من المصروفات':''}</em></div><div class="xd-c xd-k g"><small>إجمالي إيرادات أعلى 10 عقود</small><b style="font-size:1.5rem">${compact(sumBy(r,c=>c.rev))}</b><em>${M.rev>0?pct(sumBy(r,c=>c.rev)/M.rev)+' من الإيرادات':''}</em></div></div>`)}
+function sPeople(M){const te=M.topEmp[0],tp=M.topPayees[0];
+ return sl(head('الأشخاص')+`<div class="xd-g3"><div class="xd-c xd-k r"><small>${te?'أعلى موظف مدفوعًا له':'أعلى شخص مدفوعًا له'}</small><b style="font-size:1.35rem">${HE((te||tp||{name:'—'}).name)}</b><em>${te?money(te.exp):tp?money(tp.exp):''}</em></div><div class="xd-c xd-k y"><small>تركّز الإنفاق (أعلى 5)</small><b>${pct(M.top5share,0)}</b><em>من إجمالي المصروفات</em></div><div class="xd-c xd-k g"><small>أعلى جهة إيرادًا (غير الطلاب)</small><b style="font-size:1.35rem">${HE((M.topPayers[0]||{name:'—'}).name)}</b><em>${M.topPayers[0]?money(M.topPayers[0].rev):''}</em></div></div>
+ <div class="xd-g2">${xc('أعلى المستفيدين مدفوعًا لهم',barsH(M.topPayees.map(p=>({label:p.name,sub:(p.pk=='employee'?'موظف • ':'')+p.code,v:p.exp})),{c:'#ef6b57'}))}${xc(M.topEmp.length?'أعلى الموظفين مدفوعًا لهم':'الموظفون',M.topEmp.length?barsH(M.topEmp.map(p=>({label:p.name,sub:p.code,v:p.exp})),{c:'#e5a823'}):'<div class="xd-em">لا يوجد أشخاص مصنَّفون «موظف» في حقل مجال العمل خلال هذه الفترة</div>')}</div>
+ ${xc('أعلى الجهات إيرادًا (غير الطلاب)',barsH(M.topPayers.map(p=>({label:p.name,sub:p.code,v:p.rev})),{c:'#2ec27e'}))}`)}
+function sStudents(M){const D=M.dest,tot=M.rev;
+ return sl(head('الطلاب ومصادر الدخل')+`<div class="xd-g3"><div class="xd-c xd-k g"><small>إيراد الطلاب</small><b>${compact(M.stuRev)}</b><em>${tot>0?pct(M.stuRev/tot)+' من الإيرادات':''}</em></div><div class="xd-c xd-k"><small>عدد الطلاب المسدِّدين</small><b>${ar(M.stuN)}</b><em>${M.stuN?'متوسط '+compact(M.stuRev/M.stuN)+' للطالب':''}</em></div><div class="xd-c xd-k y"><small>إيرادات غير الطلاب</small><b>${compact(rnd(M.rev-M.stuRev))}</b></div></div>
+ <div class="xd-g2">${xc('الإيراد حسب الكلية',barsH(M.colleges.slice(0,10).map(c=>({label:c.k,sub:ar(c.cnt)+' طالب',v:c.rev})),{c:'#2ec27e'}))}${xc('الإيراد حسب المستوى',donut(M.levels.slice(0,8).map((l,i)=>({label:l.k,v:l.rev,c:PAL[i%PAL.length]})),compact(M.stuRev),'إيراد الطلاب'))}</div>
+ <div class="xd-g2">${xc('مصدر الإيراد',donut([{label:'الطلاب',v:M.stuRev,c:'#2ec27e'},{label:'جهات أخرى',v:rnd(M.rev-M.stuRev),c:'#4aa8d8'}],pct(tot?M.stuRev/tot:null,0),'حصة الطلاب'))}${xc('الخزينة مقابل التحويلات',`<div class="xd-mini"><div><small>إيراد الخزينة</small><b>${compact(D.treasury.rev)}</b></div><div><small>مصروف الخزينة</small><b>${compact(D.treasury.exp)}</b></div><div><small>إيراد التحويلات</small><b>${compact(D.accounts.rev)}</b></div><div><small>مصروف التحويلات</small><b>${compact(D.accounts.exp)}</b></div></div>`)}</div>`)}
+function sTeam(M){const tx=M.topTx;return sl(head('الفريق وأبرز الحركات')+`<div class="xd-g2">${xc('أكثر من حصّل (إيرادات)',barsH(M.team.filter(t=>t.col>0).sort((x,y)=>y.col-x.col).slice(0,8).map(t=>({label:t.k,sub:t.n+' حركة',v:t.col})),{c:'#2ec27e'}))}${xc('أكثر من نفّذ مدفوعات',barsH(M.team.filter(t=>t.paid>0).sort((x,y)=>y.paid-x.paid).slice(0,8).map(t=>({label:t.k,sub:t.n+' حركة',v:t.paid})),{c:'#ef6b57'}))}</div>
+ ${xc('أكبر 10 حركات في الفترة',`<div class="xd-tw"><table><thead><tr><th>التاريخ</th><th>النوع</th><th>الاسم</th><th>البيان</th><th>المبلغ</th><th>المنفِّذ</th></tr></thead><tbody>${tx.map(r=>`<tr><td>${fdu(r.day)}</td><td><span class="xd-tag ${r.inc?'i':'o'}">${r.inc?'إيراد':'مصروف'}</span></td><td>${HE(r.sname)}</td><td>${HE(r.desc)||'—'}</td><td><b>${money(r.total)}</b></td><td>${HE(r.who)}</td></tr>`).join('')||'<tr><td colspan="6">لا توجد حركات</td></tr>'}</tbody></table></div>`)}`)}
+function sCommit(M){return sl(head('المستحقات حتى اليوم','تُحسب بصرف النظر عن الفترة المختارة')+`<div class="xd-g3"><div class="xd-c xd-k g"><small>مستحق تحصيله</small><b>${compact(M.recv)}</b><em>${ar(M.recvN)} فاتورة</em></div><div class="xd-c xd-k r"><small>مستحق دفعه</small><b>${compact(M.pay)}</b><em>${ar(M.payN)} فاتورة</em></div><div class="xd-c xd-k y ${M.recv-M.pay>=0?'gr':'rr'}"><small>الصافي المستحق</small><b>${compact(rnd(M.recv-M.pay))}</b><em>تحصيل − دفع</em></div></div>
+ <div class="xd-g2">${xc('أكبر المدينين (عليهم للجامعة)',barsH(M.debtors.map(d=>({label:d.name,sub:d.n+' فاتورة',v:d.v})),{c:'#4aa8d8'}))}${xc('أكبر الدائنين (للجامعة عليهم)',barsH(M.creditors.map(d=>({label:d.name,sub:d.n+' فاتورة',v:d.v})),{c:'#c97c3a'}))}</div>
+ <div class="xd-g2">${xc('أعلى العقود مستحقًا تحصيله',barsH(M.recvC.map(d=>({label:d.title,sub:d.sname,v:d.v})),{c:'#2ec27e'}))}${xc('أعلى العقود مستحقًا دفعه',barsH(M.payC.map(d=>({label:d.title,sub:d.sname,v:d.v})),{c:'#ef6b57'}))}</div>`)}
+function sAcct(){return sl(head('حساب محدد','اختر حسابًا لعرض إحصاءاته وفواتيره في الفترة المختارة')+`<div class="xd-c" style="margin-bottom:12px"><label class="xd-sm">ابحث بكود الحساب أو اسمه</label><input id="ap" list="adl" autocomplete="off" placeholder="اكتب للبحث في شجرة الحسابات…" oninput="drawAcct()" onchange="drawAcct()"><datalist id="adl"></datalist><label class="xd-ck"><input type="checkbox" id="ai" checked onchange="drawAcct()">تضمين كل الحسابات التي تحته (بكل المستويات)</label></div><div id="acd"><div class="xd-em">اختر حسابًا من القائمة أو اضغط على أي حساب في شريحة «شجرة الحسابات»</div></div>`)}
+// ---- تفاصيل حساب ----
+let AMAP=new Map();
+function subIds(id){const s=new Set([id]),st=[id];while(st.length){const p=st.pop();ACC.forEach(a=>{if(a.parent_id==p&&!s.has(a.id)){s.add(a.id);st.push(a.id)}})}return s}
+function acctModel(id,incl){const ids=incl?subIds(id):new Set([id]),rows=S.rows.filter(r=>r.acc&&ids.has(r.acc)),a=ACC.find(x=>x.id==id);if(!a)return null;
+ const R=rows.filter(r=>r.inc),X=rows.filter(r=>!r.inc),m={a,rows,rev:sumBy(R,r=>r.total),exp:sumBy(X,r=>r.total),n:rows.length};m.net=rnd(m.rev-m.exp);m.open=sumBy(ACC.filter(x=>ids.has(x.id)),x=>+x.opening||0);
+ const bucket=S.M?S.M.bucket:'month',kf=r=>bucket=='day'?r.day:r.mon,g=new Map();rows.forEach(r=>{const k=kf(r),o=g.get(k)||{k,rev:0,exp:0,n:0,net:0,cum:0};r.inc?o.rev+=r.total:o.exp+=r.total;o.n++;g.set(k,o)});
+ const full=S.M?S.M.series.map(s=>s.k):[...g.keys()].sort();let cum=0;m.series=full.map(k=>{const o=g.get(k)||{k,rev:0,exp:0,n:0};const net=rnd(o.rev-o.exp);cum=rnd(cum+net);return{k,rev:rnd(o.rev),exp:rnd(o.exp),n:o.n,net,cum}});
+ if(incl){const roll=S.M.acc.roll,own=r=>r;const kids=ACC.filter(x=>x.parent_id==id);m.kids=kids.map(k=>{const sub=subIds(k.id),l=rows.filter(r=>sub.has(r.acc));return{a:k,rev:sumBy(l.filter(r=>r.inc),r=>r.total),exp:sumBy(l.filter(r=>!r.inc),r=>r.total),n:l.length}}).filter(k=>k.n>0).sort((x,y)=>(y.rev+y.exp)-(x.rev+x.exp));
+  const ownR=rows.filter(r=>r.acc==id);m.own={rev:sumBy(ownR.filter(r=>r.inc),r=>r.total),exp:sumBy(ownR.filter(r=>!r.inc),r=>r.total),n:ownR.length}}else{m.kids=[];m.own=null}
+ m.ppl=groupBy(rows,r=>r.sid,r=>({name:r.sname,code:r.scode,v:0,n:0}),(o,r)=>{o.v=rnd(o.v+r.total);o.n++}).sort((x,y)=>y.v-x.v).slice(0,8);
+ const inv=groupBy(rows,r=>r.iid,r=>({iid:r.iid,code:r.code,name:r.sname,desc:r.desc,img:r.img,iamt:r.iamt,type:r.type,inc:r.inc,last:r.day,done:0,fee:0}),(o,r)=>{o.done=rnd(o.done+r.amount);o.fee=rnd(o.fee+r.fee);if(r.day>o.last)o.last=r.day});m.inv=inv.sort((x,y)=>y.last<x.last?-1:1);
+ m.unpaid=S.M.CM.filter(x=>x.acc&&ids.has(x.acc)&&x.rem>0.009);m.recv=sumBy(m.unpaid.filter(x=>x.type=='income'),x=>x.rem);m.pay=sumBy(m.unpaid.filter(x=>x.type!='income'),x=>x.rem);return m}
+function drawAcct(){const box=$('#acd');if(!box)return;const id=AMAP.get($('#ap').value.trim());if(!id){box.innerHTML='<div class="xd-em">اختر حسابًا من القائمة أو اضغط على أي حساب في شريحة «شجرة الحسابات»</div>';return}
+ const m=acctModel(id,$('#ai').checked);if(!m){box.innerHTML='<div class="xd-em">الحساب غير موجود</div>';return}S.acct=id;const shown=m.inv.slice(0,300);
+ box.innerHTML=`<div class="xd-c" style="margin-bottom:12px"><h3>${HE(m.a.code)} — ${HE(accPath(m.a.id))} <span class="xd-tag ${m.a.kind=='revenue'?'i':'o'}">${m.a.kind=='revenue'?'حساب إيراد':'حساب مصروف'}</span></h3></div>
+ <div class="xd-g4"><div class="xd-c xd-k g"><small>الإيرادات</small><b style="font-size:1.5rem">${compact(m.rev)}</b><em>${money(m.rev)}</em></div><div class="xd-c xd-k r"><small>المصروفات</small><b style="font-size:1.5rem">${compact(m.exp)}</b><em>${money(m.exp)}</em></div><div class="xd-c xd-k y"><small>الصافي</small><b style="font-size:1.5rem">${compact(m.net)}</b><em>${ar(m.n)} حركة</em></div><div class="xd-c xd-k"><small>القيمة الافتتاحية</small><b style="font-size:1.5rem">${compact(m.open)}</b><em>الإجمالي الحالي ≈ ${money(rnd(m.open+(m.a.kind=='revenue'?m.rev:m.exp)))}</em></div></div>
+ <div class="xd-g2">${xc('الاتجاه الزمني للحساب',colChart(m.series,S.M.bucket))}${xc(m.kids.length?'تفصيل الحسابات التي تحته':'أعلى الأشخاص في هذا الحساب',m.kids.length?barsH(m.kids.map(k=>({label:k.a.name,sub:k.n+' حركة',v:k.rev+k.exp,c:k.rev>=k.exp?'#2ec27e':'#ef6b57'})),{click:x=>`pickAcct('${(m.kids.find(k=>k.a.name==x.label)||{a:{id:''}}).a.id}')`})+(m.own&&m.own.n?`<small class="xd-sm">على الحساب نفسه مباشرة: ${m.own.n} حركة (إيراد ${money(m.own.rev)} • مصروف ${money(m.own.exp)})</small>`:''):barsH(m.ppl.map(p=>({label:p.name,sub:p.code,v:p.v}))))}</div>
+ ${m.kids.length?xc('أعلى الأشخاص في هذا الحساب',barsH(m.ppl.map(p=>({label:p.name,sub:p.code,v:p.v})))):''}
+ ${xc('الفواتير المرتبطة بالحساب ('+ar(m.inv.length)+')',`<div class="xd-tw"><table><thead><tr><th>آخر تنفيذ</th><th>كود الفاتورة</th><th>الاسم</th><th>النوع</th><th>البيان</th><th>مبلغ الفاتورة</th><th>المنفَّذ في الفترة</th><th>الصورة</th></tr></thead><tbody>${shown.map(i=>`<tr><td>${fdu(i.last)}</td><td>${HE(i.code)}</td><td>${HE(i.name)}</td><td><span class="xd-tag ${i.inc?'i':'o'}">${i.inc?'إيراد':'مصروف'}</span></td><td>${HE(i.desc)||'—'}</td><td>${money(i.iamt)}</td><td><b>${money(i.done+i.fee)}</b></td><td>${i.img?imgL(i.img,'📎 عرض'):'—'}</td></tr>`).join('')||'<tr><td colspan="8">لا توجد فواتير منفَّذة على هذا الحساب في الفترة</td></tr>'}</tbody></table></div>${m.inv.length>300?`<small class="xd-sm">يعرض أحدث 300 فاتورة من ${ar(m.inv.length)}.</small>`:''}`)}
+ ${m.unpaid.length?xc('فواتير غير مكتملة التنفيذ على هذا الحساب',`<div class="xd-mini"><div><small>مستحق تحصيله</small><b>${compact(m.recv)}</b></div><div><small>مستحق دفعه</small><b>${compact(m.pay)}</b></div></div><small class="xd-sm">${m.unpaid.length} فاتورة بها متبقٍ (بصرف النظر عن الفترة).</small>`):''}`}
+function pickAcct(id){if(!id)return;$('#ap').value=(ACC.find(a=>a.id==id)?accLabel(ACC.find(a=>a.id==id)):'');go(TITLES.length-1);drawAcct()}
+// ================= التحميل والعرض =================
+const slides=M=>[sHero(M),sIns(M),sTrend(M),sProfit(M),sAccounts(M),sContracts(M),sPeople(M),sStudents(M),sTeam(M),sCommit(M),sAcct()];
+function rangeOf(){const t=new Date(),y=t.getFullYear(),m=t.getMonth(),P=S.p;if(P=='month')return{a:xIso(new Date(y,m,1)),b:xIso(t)};if(P=='last')return{a:xIso(new Date(y,m-1,1)),b:xIso(new Date(y,m,0))};if(P=='q3')return{a:xIso(new Date(y,m-2,1)),b:xIso(t)};if(P=='year')return{a:y+'-01-01',b:xIso(t)};if(P=='all')return{a:'',b:''};
+ if(P=='pm'){const v=$('#pm').value;if(!v)return{a:'',b:''};const yy=+v.slice(0,4),mm=+v.slice(5,7);return{a:v+'-01',b:xIso(new Date(yy,mm,0))}}return{a:$('#r1').value,b:$('#r2').value}}
+const dq=(a,b)=>(a?'&created_at=gte.'+a+'T00:00:00Z':'')+(b?'&created_at=lte.'+b+'T23:59:59Z':'');
+const PLAB={month:'هذا الشهر',last:'الشهر الماضي',q3:'آخر 3 أشهر',year:'السنة الحالية',all:'كل الفترات',pm:'شهر محدد',pr:'فترة محددة'};
+async function loadAll(){try{$('#ld').style.display='flex';$('#ld').textContent='جارٍ تحميل البيانات…';const r=rangeOf();S.a=r.a;S.b=r.b;
+ S.plabel=S.p=='all'?'كل الفترات':(r.a?fdu(r.a):'البداية')+' ← '+(r.b?fdu(r.b):'اليوم')+(PLAB[S.p]&&S.p!='pr'?' ('+PLAB[S.p]+')':'');S.dlabel=S.dest=='treasury'?'الخزينة فقط':S.dest=='accounts'?'التحويلات فقط':'الخزينة والتحويلات';
+ const df=S.dest?'&invoices.dest=eq.'+S.dest:'',df2=S.dest?'&dest=eq.'+S.dest:'';
+ const qP='payments?status=eq.approved&select=amount,fee,note,created_at,invoices!inner(id,type,code,description,dest,account_id,supplier_id,contract_id,amount,image_url,suppliers(name,code,field,kind,level),contracts(title)),pc:users!payments_created_by_fkey(full_name)&order=created_at.desc'+df+dq(r.a,r.b);
+ let prevQ=null;if(r.a&&r.b){const L=Math.round((xU(r.b)-xU(r.a))/864e5)+1,pb=xAdd(r.a,-1),pa=xAdd(pb,-(L-1));prevQ='payments?status=eq.approved&select=amount,fee,invoices!inner(type,dest)&order=created_at.desc'+df+dq(pa,pb)}
+ const cmSel='invoices?select=id,type,dest,apv,amount,account_id,supplier_id,contract_id,suppliers(name,code,field,kind),contracts(title),payments(amount,status)',
+  cmQ=async()=>{try{return await apiAll(cmSel+'&or=(apv.is.null,apv.neq.rejected)'+df2)}catch(e){return(await apiAll(cmSel.replace('apv,','')+df2)).map(x=>x)}};
+ const [pr,pv,cm,ac]=await Promise.all([apiAll(qP),prevQ?apiAll(prevQ):Promise.resolve(null),cmQ(),accLoad(true).catch(()=>[])]);
+ S.rows=pr.map(normRow);S.CM=cm.map(normCM);const prev=pv?{rev:sumBy(pv.filter(x=>x.invoices.type=='income'),x=>+x.amount+(+x.fee||0)),exp:sumBy(pv.filter(x=>x.invoices.type!='income'),x=>+x.amount+(+x.fee||0))}:null;
+ S.M=buildModel(S.rows,prev,S.CM,ACC,r);render();$('#ld').style.display='none'}catch(e){$('#ld').textContent='تعذر التحميل: '+(e.message||e).toString().slice(0,160);msg(errT(e),1)}}
+function render(){const H=slides(S.M);$('#sl').innerHTML=H.join('');AMAP=new Map(accTree().map(a=>[accLabel(a),a.id]));const dl=$('#adl');if(dl)dl.innerHTML=[...AMAP.keys()].map(k=>`<option value="${HE(k)}">`).join('');
+ $('#dots').innerHTML=TITLES.map((t,i)=>`<i title="${t}" onclick="go(${i})"></i>`).join('');S.cur=Math.min(S.cur,TITLES.length-1);go(S.cur,true);if(S.acct){const a=ACC.find(x=>x.id==S.acct);if(a&&$('#ap')){$('#ap').value=accLabel(a);drawAcct()}}}
+function go(i,quiet){const n=TITLES.length;i=Math.max(0,Math.min(n-1,i));const old=S.cur,els=document.querySelectorAll('.xd-slide');els.forEach((e,k)=>{e.classList.toggle('on',k==i);e.classList.toggle('prv',k<i)});
+ document.querySelectorAll('#dots i').forEach((d,k)=>d.classList.toggle('on',k==i));$('#ttl').textContent=(i+1)+' / '+n+' • '+TITLES[i];S.cur=i;const cur=els[i];if(cur){cur.scrollTop=0;cur.querySelectorAll('.xd-n').forEach(cnt)}}
+function cnt(el){const v=+el.dataset.v;if(!isFinite(v)||matchMedia('(prefers-reduced-motion: reduce)').matches){return}const t0=performance.now(),D=900;(function f(t){const p=Math.min(1,(t-t0)/D),e=1-Math.pow(1-p,3);el.textContent=compact(v*e);if(p<1)requestAnimationFrame(f);else el.textContent=compact(v)})(t0)}
+const nxt=()=>go(S.cur+1),prv=()=>go(S.cur-1);
+function setAuto(on){clearInterval(S.auto);S.auto=null;$('#aub').classList.toggle('on',on);$('#aub').textContent=on?'⏸ إيقاف التشغيل':'⏵ تشغيل تلقائي';if(on)S.auto=setInterval(()=>{if(S.cur>=TITLES.length-2)go(0);else nxt()},12000)}
+function toggleFs(){const on=!document.body.classList.contains('xd-fs');document.body.classList.toggle('xd-fs',on);$('#fsb').textContent=on?'× إنهاء العرض':'▶ عرض تقديمي';const x=$('#xd');
+ try{if(on&&x.requestFullscreen)x.requestFullscreen().catch(()=>{});else if(!on&&document.fullscreenElement)document.exitFullscreen()}catch(e){}}
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&document.body.classList.contains('xd-fs')){document.body.classList.remove('xd-fs');$('#fsb').textContent='▶ عرض تقديمي'}});
+document.addEventListener('keydown',e=>{const t=(e.target&&e.target.tagName)||'';if(/INPUT|SELECT|TEXTAREA/.test(t))return;if(e.key=='ArrowLeft'||e.key=='PageDown'||e.key==' ')nxt();else if(e.key=='ArrowRight'||e.key=='PageUp')prv();else if(e.key=='Home')go(0);else if(e.key=='End')go(TITLES.length-1);else if(e.key=='Escape'&&document.body.classList.contains('xd-fs'))toggleFs()});
+let tx0=null;$('#xd').addEventListener('touchstart',e=>{tx0=e.touches[0].clientX},{passive:true});$('#xd').addEventListener('touchend',e=>{if(tx0==null)return;const d=e.changedTouches[0].clientX-tx0;tx0=null;if(Math.abs(d)>70){d<0?nxt():prv()}},{passive:true});
+// ---- الأدوات العلوية ----
+function bar(){$('#pre').innerHTML=[['month','هذا الشهر'],['last','الشهر الماضي'],['q3','آخر 3 أشهر'],['year','السنة الحالية'],['all','كل الفترات'],['pm','شهر محدد'],['pr','فترة محددة']].map(([k,l])=>`<button class="xd-chip ${S.p==k?'on':''}" data-p="${k}">${l}</button>`).join('');
+ $('#dst').innerHTML=[['','الكل'],['treasury','الخزينة'],['accounts','التحويلات']].map(([k,l])=>`<button class="xd-chip ${S.dest==k?'on':''}" data-d="${k}">${l}</button>`).join('');
+ $('#pm').classList.toggle('hide',S.p!='pm');$('#pr').classList.toggle('hide',S.p!='pr');
+ document.querySelectorAll('#pre button').forEach(b=>b.onclick=()=>{S.p=b.dataset.p;bar();if(S.p!='pm'&&S.p!='pr')loadAll()});document.querySelectorAll('#dst button').forEach(b=>b.onclick=()=>{S.dest=b.dataset.d;bar();loadAll()})}
+$('#pm').onchange=()=>loadAll();$('#go').onclick=()=>loadAll();$('#fsb').onclick=toggleFs;$('#fsx').onclick=toggleFs;$('#aub').onclick=()=>setAuto(!S.auto);$('#nx').onclick=nxt;$('#pv').onclick=prv;$('#prb').onclick=()=>window.print();
+$('#xlb').onclick=()=>{try{const M=S.M;if(!M||!window.XLSX||!XLSX.utils.book_new)return msg('لا توجد بيانات أو تعذر تحميل مكتبة Excel',1);const wb=XLSX.utils.book_new(),add=(n,aoa)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),n);
+ add('الملخص',[['اللوحة التنفيذية',S.plabel,S.dlabel],[],['الإيرادات',M.rev],['المصروفات',M.exp],['الصافي',M.net],['هامش الربح',M.margin==null?'':rnd(M.margin*100)+'%'],['عدد الحركات',M.n],['رسوم التأخير',M.fees],['مستحق تحصيله',M.recv],['مستحق دفعه',M.pay],['الربح المتوقع بعد التسوية',M.after]]);
+ add('الاتجاه',[['الفترة','إيراد','مصروف','الصافي','الصافي التراكمي','عدد الحركات'],...M.series.map(s=>[s.k,s.rev,s.exp,s.net,s.cum,s.n])]);
+ add('الحسابات الرئيسية',[['الكود','الحساب','الإيراد','المصروف','الحركات'],...M.acc.roots.map(r=>[r.a.code,r.a.name,r.rev,r.exp,r.n])]);
+ add('كل الحسابات',[['الكود','المسار','الإيراد المباشر','المصروف المباشر','الحركات'],...M.acc.flat.map(x=>[x.a.code,accPath(x.a.id),x.rev,x.exp,x.n])]);
+ add('العقود',[['العقد','الشخص','الإيراد','المصروف','الحركات'],...M.ctr.map(c=>[c.title,c.sname,c.rev,c.exp,c.n])]);
+ add('الأشخاص',[['الاسم','الكود','التصنيف','المدفوع له','المحصَّل منه','الحركات'],...M.ppl.map(p=>[p.name,p.code,p.pk=='student'?'طالب':p.pk=='employee'?'موظف':'مورد/جهة',p.exp,p.rev,p.n])]);
+ add('أبرز الحركات',[['التاريخ','النوع','الاسم','كود الفاتورة','البيان','المبلغ','المنفِّذ'],...M.topTx.map(r=>[r.day,r.inc?'إيراد':'مصروف',r.sname,r.code,r.desc,r.total,r.who])]);
+ wb.Workbook={Views:[{RTL:true}]};XLSX.writeFile(wb,'executive_overview.xlsx');msg('تم تحميل ملف Excel')}catch(e){msg('تعذر إنشاء Excel: '+e.message,1)}};
+$('#r1').value=xIso(new Date(new Date().getFullYear(),0,1));$('#r2').value=xIso(new Date());$('#pm').value=xIso(new Date()).slice(0,7);
+bar();loadAll();
+</script></body></html>
